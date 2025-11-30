@@ -173,14 +173,18 @@ const App = {
             };
         });
 
-        // Click Canvas to deselect
-        document.getElementById('canvas-wrapper').addEventListener('click', (e) => {
-            if (e.target.id === 'canvas-wrapper' || e.target.id === 'canvas') {
-                this.selected = null;
-                Inspector.close();
-                document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
-            }
-        });
+        // Click Canvas to deselect (FIXED: ID changed from 'canvas-wrapper' to 'stage')
+        const stage = document.getElementById('stage');
+        if (stage) {
+            stage.addEventListener('click', (e) => {
+                // Deselect if clicking the background, not a widget
+                if (e.target.id === 'stage' || e.target.id === 'canvas-frame' || e.target.id === 'canvas') {
+                    this.selected = null;
+                    Inspector.close();
+                    document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+                }
+            });
+        }
     }
 };
 

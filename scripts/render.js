@@ -50,6 +50,9 @@ export const RenderEngine = {
         const style = widget.settings.style || {};
         const adv = widget.settings.advanced || {};
         
+        // Define 'def' here to fix ReferenceError
+        const def = Registry.definitions[widget.type];
+
         // Reset styles first to avoid ghosts
         el.style.cssText = ''; 
 
@@ -64,7 +67,9 @@ export const RenderEngine = {
         
         // Classes
         el.className = `ce-widget ${widget.type} ${adv.classes || ''}`;
-        if(def.isContainer) el.classList.add('ce-container');
+        
+        // Add necessary classes
+        if(def && def.isContainer) el.classList.add('ce-container');
         if(window.App.selected === widget.id) el.classList.add('selected');
         if(widget.children && widget.children.length === 0) el.classList.add('empty');
     },
@@ -79,7 +84,6 @@ export const RenderEngine = {
             
             el.oninput = () => {
                 widget.content.text = el.innerText;
-                // Note: Debounce save/history in real app
             };
             el.onblur = () => {
                 window.App.history.push(window.App.data);
