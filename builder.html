@@ -1,650 +1,1097 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SiteBuilder - Editor</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- INLINE STORAGE -->
+    <!-- 
+      ========================================
+      FILE: /scripts/pages.js (Storage System)
+      ======================================== 
+    -->
     <script>
-        const DB_KEY='sitebuilder_pages';const Pages={getAll:()=>{const e=localStorage.getItem("sitebuilder_pages");return e?JSON.parse(e):[]},getById:e=>{const t=Pages.getAll();return t.find((t=>t.id===e))||null},update:(e,t)=>{const a=Pages.getAll(),s=a.findIndex((t=>t.id===e));return-1!==s&&(a[s]={...a[s],...t,lastModified:(new Date).toLocaleString()},localStorage.setItem("sitebuilder_pages",JSON.stringify(a)),!0)}};window.Pages=Pages;
+        const DB_KEY = 'sitebuilder_pages'; const Pages = { getAll: () => { const e = localStorage.getItem("sitebuilder_pages"); return e ? JSON.parse(e) : [] }, getById: e => { const t = Pages.getAll(); return t.find((t => t.id === e)) || null }, update: (e, t) => { const a = Pages.getAll(), s = a.findIndex((t => t.id === e)); return -1 !== s && (a[s] = { ...a[s], ...t, lastModified: (new Date).toLocaleString() }, localStorage.setItem("sitebuilder_pages", JSON.stringify(a)), !0) } }; window.Pages = Pages;
     </script>
 
+    <!-- 
+      ========================================
+      FILE: /styles/builder.css
+      ======================================== 
+    -->
     <style>
-        /* --- builder.css --- */
         :root {
             --sidebar-width: 300px;
             --topbar-height: 50px;
-            --footer-height: 45px;
-            --bg-dark: #2d2d2d;
-            --bg-panel: #ffffff;
-            --bg-canvas: #eeeeee;
             --accent: #9b59b6;
+            /* Elementor Pink/Purple */
             --accent-hover: #8e44ad;
+            --bg-canvas: #f1f1f1;
+            --bg-panel: #ffffff;
             --text-main: #333;
-            --border: #e0e0e0;
-            --save-btn-bg: #5db075;
-            --save-btn-disabled: #a0cfa0;
+            --border-color: #ddd;
+            --handle-color: #9b59b6;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #f1f1f1; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        /* --- Top Bar --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-canvas);
+        }
+
+        /* --- UI: Top Bar --- */
         #top-bar {
-            height: var(--topbar-height); background: #ffffff; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            height: var(--topbar-height);
+            background: #fff;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 100;
         }
-        .toolbar-group { display: flex; gap: 12px; align-items: center; }
+
+        .bar-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
         .btn-tool {
-            background: transparent; border: 1px solid transparent; padding: 6px 10px; cursor: pointer; border-radius: 3px; color: #555; font-size: 14px; transition: 0.2s;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 6px 10px;
+            cursor: pointer;
+            color: #555;
+            border-radius: 3px;
+            font-size: 14px;
+            transition: 0.2s;
         }
-        .btn-tool:hover { background: #f0f0f0; color: #000; }
-        .btn-tool.active { background: #f0f0f0; color: var(--accent); }
-        
-        .btn-save { 
-            background: var(--save-btn-disabled); color: white; font-weight: 500; padding: 8px 16px; pointer-events: none; opacity: 0.7; transition: all 0.3s;
-        }
-        .btn-save.has-changes {
-            background: var(--save-btn-bg); pointer-events: auto; opacity: 1; cursor: pointer;
-        }
-        .btn-save.has-changes:hover { background: #4cae68; }
-        
-        /* --- Layout --- */
-        #workspace { display: flex; flex: 1; height: calc(100vh - var(--topbar-height)); position: relative; }
 
-        /* --- Unified Sidebar --- */
-        #main-sidebar {
-            width: var(--sidebar-width); background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 30; box-shadow: 2px 0 10px rgba(0,0,0,0.05);
-            transition: width 0.3s ease, transform 0.3s ease; position: relative;
+        .btn-tool:hover {
+            background: #f5f5f5;
+            color: #000;
         }
-        #main-sidebar.collapsed { width: 0; overflow: hidden; border: none; }
-        
-        /* Collapse Handle */
-        .sidebar-toggle {
-            position: absolute; top: 50%; left: var(--sidebar-width); width: 20px; height: 40px; background: #fff;
-            border: 1px solid #ddd; border-left: none; border-radius: 0 5px 5px 0; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; color: #555; z-index: 25;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: left 0.3s ease;
-        }
-        #main-sidebar.collapsed + .sidebar-toggle { left: 0; z-index: 40; }
 
+        .btn-tool.active {
+            background: #eee;
+            color: var(--accent);
+        }
+
+        .btn-save {
+            background: #5db075;
+            color: white;
+            font-weight: 600;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .btn-save.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- UI: Layout --- */
+        #editor-layout {
+            display: flex;
+            height: calc(100vh - var(--topbar-height));
+        }
+
+        /* --- UI: Sidebar (Left) --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: margin-left 0.3s ease;
+            position: relative;
+            z-index: 90;
+        }
+
+        #sidebar.collapsed {
+            margin-left: calc(var(--sidebar-width) * -1);
+        }
+
+        /* Sidebar Header */
         .sidebar-header {
-            height: 50px; border-bottom: 1px solid #eee; display: flex; align-items: center; padding: 0 15px; background: #fff; justify-content: space-between; flex-shrink: 0;
+            height: 50px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            background: #fff;
         }
-        .panel-title { font-weight: 700; font-size: 13px; text-transform: uppercase; color: #555; }
-        
-        .widget-search-box { padding: 10px 15px; border-bottom: 1px solid #eee; background: #fcfcfc; }
-        .widget-search-box input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; }
 
-        .sidebar-content { flex: 1; overflow-y: auto; position: relative; }
+        .header-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
 
-        #widget-grid { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        /* Sidebar Toggle */
+        .sidebar-toggle {
+            position: absolute;
+            top: 50%;
+            right: -24px;
+            width: 24px;
+            height: 48px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            z-index: 91;
+        }
+
+        /* Widget Grid (Library) */
+        #widget-library {
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
         .widget-card {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: #fff; border: 1px solid #eee; border-radius: 3px; padding: 15px 10px;
-            cursor: grab; transition: all 0.2s; height: 90px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .widget-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform: translateY(-2px); color: var(--accent); }
-        .widget-card i { font-size: 24px; margin-bottom: 8px; color: #888; }
-        .widget-card:hover i { color: var(--accent); }
-        .widget-card span { font-size: 12px; font-weight: 500; color: #555; }
 
-        #settings-view, #page-settings-view { display: none; flex-direction: column; height: 100%; }
-        #settings-view.active, #page-settings-view.active { display: flex; }
-
-        .settings-tabs { display: flex; border-bottom: 1px solid #ddd; background: #fff; flex-shrink: 0; }
-        .tab-btn { flex: 1; padding: 14px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #555; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-        .settings-scroll { flex: 1; overflow-y: auto; padding: 0; }
-
-        .sidebar-footer {
-            height: var(--footer-height); border-top: 1px solid #eee; background: #fff; display: flex; align-items: center; justify-content: space-around; flex-shrink: 0;
+        .widget-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: var(--accent);
+            transform: translateY(-2px);
         }
-        .footer-icon { color: #555; font-size: 16px; cursor: pointer; padding: 8px; border-radius: 3px; transition: 0.2s; }
-        .footer-icon:hover { background: #f0f0f0; color: #000; }
-        .footer-icon.active { color: var(--accent); }
 
-        /* Accordions */
-        .accordion-item { border-bottom: 1px solid #f1f1f1; }
-        .accordion-header { padding: 15px 20px; cursor: pointer; background: #fff; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; color: #444; }
-        .accordion-header:hover { background: #fafafa; }
-        .accordion-body { padding: 15px 20px; display: none; background: #fff; }
-        .accordion-item.active .accordion-body { display: block; }
-        
-        /* Controls */
-        .control-group { margin-bottom: 15px; }
-        .control-label { display: block; font-size: 12px; color: #777; margin-bottom: 6px; font-weight: 500; }
-        .control-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; color: #333; }
-        .control-input:focus { border-color: var(--accent); outline: none; }
-        
-        /* --- Canvas --- */
-        #canvas-wrapper { flex: 1; background: var(--bg-canvas); display: flex; justify-content: center; padding: 40px; overflow-y: auto; position: relative; transition: padding 0.3s ease; }
-        #canvas {
-            background: white; min-height: 85vh; width: 100%; max-width: 1140px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: width 0.3s ease; position: relative; padding-bottom: 50px;
+        .widget-card i {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #888;
         }
-        #canvas.tablet { width: 768px; }
-        #canvas.mobile { width: 360px; }
 
-        .drop-zone-active { outline: 2px dashed var(--accent); outline-offset: -2px; background: rgba(155, 89, 182, 0.05); }
-        .drop-placeholder { height: 4px; background: var(--accent); margin: 5px 0; border-radius: 2px; position: relative; }
-
-        .builder-element { position: relative; border: 1px solid transparent; min-height: 20px; transition: opacity 0.2s; }
-        .builder-element:hover { border: 1px dashed var(--accent); }
-        .builder-element.selected { border: 1px solid var(--accent); z-index: 5; }
-        
-        .element-handle {
-            position: absolute; top: -20px; left: -1px; background: var(--accent); color: white;
-            padding: 2px 10px; font-size: 11px; border-radius: 3px 3px 0 0; display: none; cursor: grab; z-index: 10;
+        .widget-card:hover i {
+            color: var(--accent);
         }
-        .element-actions {
-            position: absolute; top: -20px; right: -1px; background: var(--accent); color: white;
-            display: none; border-radius: 3px 3px 0 0; z-index: 10;
-        }
-        .builder-element:hover .element-handle, .builder-element.selected .element-handle,
-        .builder-element:hover .element-actions, .builder-element.selected .element-actions { display: flex; }
-        
-        .action-btn { padding: 4px 8px; cursor: pointer; font-size: 11px; border-left: 1px solid rgba(255,255,255,0.2); }
-        .action-btn:hover { background: rgba(0,0,0,0.1); }
-        .action-btn.delete:hover { background: #d32f2f; }
 
-        #structure-panel {
-            position: fixed; right: 20px; bottom: 80px; width: 250px; height: 350px; background: #fff;
-            border-radius: 5px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 100;
+        .widget-card span {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Inspector (Settings) */
+        #inspector {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            flex: 1;
+        }
+
+        #inspector.active {
+            display: flex;
+        }
+
+        .inspector-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: #fff;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .inspector-content {
+            flex: 1;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        /* Accordions & Controls */
+        .control-section {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .control-head {
+            padding: 12px 15px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            background: #fff;
+        }
+
+        .control-head:hover {
+            background: #f9f9f9;
+        }
+
+        .control-body {
+            padding: 15px;
+            display: none;
+        }
+
+        .control-section.open .control-body {
+            display: block;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 11px;
+            color: #777;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 6px;
             border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
         }
-        .struct-header {
-            padding: 10px 15px; background: #f9f9f9; border-bottom: 1px solid #eee; font-size: 12px; font-weight: 700;
-            display: flex; justify-content: space-between; align-items: center; cursor: move; color: #555;
-        }
-        .struct-body { flex: 1; overflow-y: auto; padding: 5px 0; }
-        .struct-item {
-            padding: 8px 15px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f9f9f9;
-        }
-        .struct-item:hover { background: #f5f5f5; }
-        .struct-item.active { background: #f0f0f0; color: var(--accent); font-weight: 600; border-left: 3px solid var(--accent); }
-        .struct-icon { width: 16px; text-align: center; color: #999; }
 
-        .gu-mirror { position: fixed !important; margin: 0 !important; z-index: 9999 !important; opacity: 0.8; }
-        .dragging { opacity: 0.5; }
-
-        #context-menu {
-            position: fixed; background: #fff; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
-            width: 180px; display: none; z-index: 1000; border-radius: 4px; padding: 5px 0;
+        .control-input:focus {
+            border-color: var(--accent);
+            outline: none;
         }
-        .ctx-item { padding: 8px 15px; font-size: 13px; color: #333; cursor: pointer; display: flex; justify-content: space-between; }
-        .ctx-item:hover { background: #f5f5f5; color: var(--accent); }
-        .ctx-shortcut { font-size: 11px; opacity: 0.6; }
-        .ctx-sep { height: 1px; background: #eee; margin: 4px 0; }
+
+        /* --- UI: Canvas --- */
+        #canvas-wrapper {
+            flex: 1;
+            background: var(--bg-canvas);
+            display: flex;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 40px;
+        }
+
+        #canvas {
+            background: white;
+            min-height: 85vh;
+            width: 100%;
+            max-width: 1140px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            padding-bottom: 100px;
+            transition: width 0.3s ease;
+        }
+
+        #canvas.tablet {
+            width: 768px;
+        }
+
+        #canvas.mobile {
+            width: 360px;
+        }
+
+        /* --- Drag & Drop Visuals --- */
+        .drop-target {
+            outline: 2px dashed var(--accent);
+            outline-offset: -2px;
+            background: rgba(155, 89, 182, 0.05);
+        }
+
+        .drop-placeholder {
+            height: 4px;
+            background: var(--accent);
+            margin: 5px 0;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+
+        /* --- Widgets on Canvas --- */
+        .ce-widget {
+            position: relative;
+            border: 1px solid transparent;
+            min-height: 20px;
+            transition: all 0.2s;
+        }
+
+        .ce-widget:hover {
+            border: 1px dashed var(--accent);
+        }
+
+        .ce-widget.selected {
+            border: 1px solid var(--accent);
+            z-index: 10;
+        }
+
+        /* Container specific */
+        .ce-container {
+            min-height: 50px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ce-container.empty::after {
+            content: 'Drop widgets here';
+            display: block;
+            text-align: center;
+            padding: 20px;
+            color: #ccc;
+            border: 1px dashed #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Widget Handles */
+        .widget-handle {
+            position: absolute;
+            top: -22px;
+            left: -1px;
+            background: var(--accent);
+            color: white;
+            height: 22px;
+            padding: 0 8px;
+            font-size: 11px;
+            display: none;
+            align-items: center;
+            border-radius: 3px 3px 0 0;
+            cursor: grab;
+            z-index: 20;
+        }
+
+        .ce-widget:hover .widget-handle,
+        .ce-widget.selected .widget-handle {
+            display: flex;
+        }
+
+        .widget-tools {
+            position: absolute;
+            top: -22px;
+            right: -1px;
+            background: var(--accent);
+            color: white;
+            height: 22px;
+            display: none;
+            align-items: center;
+            border-radius: 3px 3px 0 0;
+            z-index: 20;
+        }
+
+        .ce-widget:hover .widget-tools,
+        .ce-widget.selected .widget-tools {
+            display: flex;
+        }
+
+        .tool-btn {
+            width: 24px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tool-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .tool-btn.delete:hover {
+            background: #e74c3c;
+        }
+
+        /* Inline Editing */
+        [contenteditable]:focus {
+            outline: 2px solid var(--accent);
+        }
+
+        [contenteditable]:empty:before {
+            content: 'Type here...';
+            color: #ccc;
+        }
     </style>
 </head>
+
 <body>
 
-    <!-- Top Bar -->
+    <!-- Top Toolbar -->
     <header id="top-bar">
-        <div class="toolbar-group">
-            <button class="btn-tool" onclick="window.location.href='dashboard.html'"><i class="fas fa-bars"></i></button>
-            <div style="font-weight: 700; font-size: 16px; color: #333;">Elementor Lite</div>
+        <div class="bar-group">
+            <button class="btn-tool" onclick="window.location.href='dashboard.html'"><i
+                    class="fas fa-bars"></i></button>
+            <div style="font-weight:700; color:#333;">Editor</div>
         </div>
-        
-        <div class="toolbar-group">
-            <button class="btn-tool active" onclick="setMode('desktop', this)"><i class="fas fa-desktop"></i></button>
-            <button class="btn-tool" onclick="setMode('tablet', this)"><i class="fas fa-tablet-alt"></i></button>
-            <button class="btn-tool" onclick="setMode('mobile', this)"><i class="fas fa-mobile-alt"></i></button>
+        <div class="bar-group">
+            <button class="btn-tool active" onclick="setDevice('desktop')"><i class="fas fa-desktop"></i></button>
+            <button class="btn-tool" onclick="setDevice('tablet')"><i class="fas fa-tablet-alt"></i></button>
+            <button class="btn-tool" onclick="setDevice('mobile')"><i class="fas fa-mobile-alt"></i></button>
         </div>
-
-        <div class="toolbar-group">
-            <button class="btn-tool" onclick="undo()" title="Undo"><i class="fas fa-undo"></i></button>
-            <button class="btn-tool" onclick="redo()" title="Redo"><i class="fas fa-redo"></i></button>
-            <div style="width:1px; height:20px; background:#ddd;"></div>
-            <button class="btn-save" id="btn-save" onclick="savePage()">UPDATE</button>
-            <button class="btn-tool" onclick="exportPage()" title="Export HTML"><i class="fas fa-download"></i></button>
-            <button class="btn-tool" onclick="previewPage()" title="Preview"><i class="fas fa-eye"></i></button>
+        <div class="bar-group">
+            <button class="btn-tool" onclick="undo()"><i class="fas fa-undo"></i></button>
+            <button class="btn-tool" onclick="redo()"><i class="fas fa-redo"></i></button>
+            <button class="btn-tool btn-save" id="btn-save" onclick="savePage()">UPDATE</button>
+            <button class="btn-tool" onclick="previewPage()"><i class="fas fa-eye"></i></button>
         </div>
     </header>
 
-    <!-- Workspace -->
-    <div id="workspace">
-        
+    <!-- Main Layout -->
+    <div id="editor-layout">
+
         <!-- Sidebar -->
-        <aside id="main-sidebar">
-            <div id="widget-view" class="sidebar-content">
+        <aside id="sidebar">
+            <div class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-chevron-left"></i></div>
+
+            <!-- Library View -->
+            <div id="sidebar-library" style="display:flex; flex-direction:column; height:100%;">
                 <div class="sidebar-header">
-                    <span class="panel-title">Elements</span>
-                    <i class="fas fa-th" style="color:#aaa;"></i>
+                    <span class="header-title">Elements</span>
+                    <i class="fas fa-th"></i>
                 </div>
-                <div class="widget-search-box">
-                    <input type="search" placeholder="Search Widget..." onkeyup="filterWidgets(this.value)">
+                <div style="padding:10px; border-bottom:1px solid #eee;">
+                    <input type="text" placeholder="Search Widget..." class="control-input"
+                        onkeyup="filterWidgets(this.value)">
                 </div>
-                <div id="widget-grid"></div>
+                <div id="widget-library"></div>
             </div>
 
-            <div id="settings-view">
-                <div class="sidebar-header" style="background: #f9f9f9;">
-                    <span class="panel-title" id="settings-title">Edit</span>
-                    <button class="btn-tool" onclick="showWidgetLibrary()"><i class="fas fa-th"></i></button>
+            <!-- Inspector View -->
+            <div id="inspector">
+                <div class="sidebar-header" style="background:#f9f9f9;">
+                    <span class="header-title" id="inspector-title">Edit Heading</span>
+                    <button class="btn-tool" onclick="showLibrary()"><i class="fas fa-th"></i></button>
                 </div>
-                <div class="settings-tabs">
-                    <button class="tab-btn active" onclick="switchTab('content')">Content</button>
-                    <button class="tab-btn" onclick="switchTab('style')">Style</button>
-                    <button class="tab-btn" onclick="switchTab('advanced')">Advanced</button>
+                <div class="inspector-tabs">
+                    <div class="tab-btn active" onclick="switchTab('content')">Content</div>
+                    <div class="tab-btn" onclick="switchTab('style')">Style</div>
+                    <div class="tab-btn" onclick="switchTab('advanced')">Advanced</div>
                 </div>
-                <div id="settings-body" class="settings-scroll"></div>
-            </div>
-
-            <div id="page-settings-view">
-                <div class="sidebar-header" style="background: #f9f9f9;">
-                    <span class="panel-title">Page Settings</span>
-                    <button class="btn-tool" onclick="showWidgetLibrary()"><i class="fas fa-times"></i></button>
-                </div>
-                <div id="page-settings-body" class="settings-scroll" style="padding: 15px;"></div>
-            </div>
-
-            <div class="sidebar-footer">
-                <div class="footer-icon" onclick="showPageSettings()" title="Settings"><i class="fas fa-cog"></i></div>
-                <div class="footer-icon" onclick="toggleStructure()" title="Navigator"><i class="fas fa-layer-group"></i></div>
-                <div class="footer-icon" title="History"><i class="fas fa-history"></i></div>
-                <div class="footer-icon" title="Responsive Mode"><i class="fas fa-mobile-alt"></i></div>
-                <div class="footer-icon" title="Preview Changes"><i class="fas fa-eye"></i></div>
+                <div id="inspector-content" class="inspector-content"></div>
             </div>
         </aside>
 
-        <!-- Sidebar Toggle -->
-        <div class="sidebar-toggle" onclick="toggleSidebar()">
-            <i class="fas fa-chevron-left" id="toggle-icon"></i>
-        </div>
-
-        <!-- Canvas -->
-        <main id="canvas-wrapper" onclick="deselectAll()">
-            <div id="canvas" ondragover="handleDragOver(event)" ondrop="handleDrop(event)"></div>
+        <!-- Canvas Area -->
+        <main id="canvas-wrapper" onclick="deselectAll(event)">
+            <div id="canvas"></div>
         </main>
 
-        <!-- Structure -->
-        <div id="structure-panel">
-            <div class="struct-header" id="struct-header">
-                <span>Structure</span>
-                <span onclick="toggleStructure()" style="cursor:pointer;"><i class="fas fa-times"></i></span>
-            </div>
-            <div class="struct-body" id="struct-list"></div>
-        </div>
     </div>
 
-    <!-- Context Menu -->
-    <div id="context-menu">
-        <div class="ctx-item" onclick="handleAction('copy')"><span>Copy</span> <span class="ctx-shortcut">Ctrl+C</span></div>
-        <div class="ctx-item" onclick="handleAction('paste')"><span>Paste</span> <span class="ctx-shortcut">Ctrl+V</span></div>
-        <div class="ctx-sep"></div>
-        <div class="ctx-item" onclick="handleAction('duplicate')"><span>Duplicate</span> <span class="ctx-shortcut">Ctrl+D</span></div>
-        <div class="ctx-item" onclick="handleAction('delete')"><span>Delete</span> <span class="ctx-shortcut">Del</span></div>
-    </div>
-
-    <!-- JS Logic -->
+    <!-- 
+      ========================================
+      FILE: /scripts/builder.js
+      ======================================== 
+    -->
     <script>
         /**
-         * PLUGIN SYSTEM & API
-         * 1. Register Widgets
-         * 2. Register Control Renderers (e.g. Color Picker, Slider)
-         * 3. Hooks (Filters) for modifying tabs/controls dynamically
+         * CORE BUILDER ENGINE
+         * Handles Page Data, Widget Registry, Rendering, and Events
          */
-        window.SiteBuilder = {
-            widgets: {},
-            controlRenderers: {},
-            hooks: {}, // { 'hookName': [cb1, cb2] }
 
-            // Widgets
-            registerWidget: function(id, definition) {
-                this.widgets[id] = definition;
-                if(typeof renderWidgetList === 'function') renderWidgetList(Object.keys(this.widgets));
-            },
-            getWidget: function(id) { return this.widgets[id]; },
-            getAllWidgets: function() { return Object.keys(this.widgets); },
-
-            // Controls (Inputs)
-            registerControl: function(type, rendererFn) {
-                this.controlRenderers[type] = rendererFn;
-            },
-            renderControl: function(control, value, onChange) {
-                if(this.controlRenderers[control.type]) {
-                    return this.controlRenderers[control.type](control, value, onChange);
-                }
-                console.warn(`No renderer for control type: ${control.type}`);
-                return document.createElement('div');
-            },
-
-            // Hooks
-            addFilter: function(hook, callback) {
-                if(!this.hooks[hook]) this.hooks[hook] = [];
-                this.hooks[hook].push(callback);
-            },
-            applyFilters: function(hook, data) {
-                if(!this.hooks[hook]) return data;
-                return this.hooks[hook].reduce((acc, cb) => cb(acc), data);
-            }
-        };
-
-        // --- Register Default Control Renderers ---
-        SiteBuilder.registerControl('text', (c, val, cb) => {
-            const el = document.createElement('input'); el.type = 'text'; el.className = 'control-input'; el.value = val || '';
-            el.oninput = (e) => cb(e.target.value);
-            return el;
-        });
-        SiteBuilder.registerControl('textarea', (c, val, cb) => {
-            const el = document.createElement('textarea'); el.className = 'control-input'; el.rows = 4; el.value = val || '';
-            el.oninput = (e) => cb(e.target.value);
-            return el;
-        });
-        SiteBuilder.registerControl('color', (c, val, cb) => {
-            const el = document.createElement('input'); el.type = 'color'; el.className = 'control-input'; el.style.height = '35px'; el.style.padding = '2px'; el.value = val || '#000000';
-            el.oninput = (e) => cb(e.target.value);
-            return el;
-        });
-        SiteBuilder.registerControl('select', (c, val, cb) => {
-            const el = document.createElement('select'); el.className = 'control-input';
-            c.options.forEach(opt => {
-                const o = document.createElement('option'); o.value = opt; o.textContent = opt;
-                if(val === opt) o.selected = true;
-                el.appendChild(o);
-            });
-            el.oninput = (e) => cb(e.target.value);
-            return el;
-        });
-        SiteBuilder.registerControl('range', (c, val, cb) => {
-            const el = document.createElement('input'); el.type = 'range'; el.style.width = '100%';
-            el.min = c.min || 0; el.max = c.max || 100; if(c.step) el.step = c.step; el.value = parseFloat(val) || 0;
-            el.oninput = (e) => cb(e.target.value);
-            return el;
-        });
-
-        /**
-         * BUILDER CORE
-         */
         const AppState = {
             pageId: null,
-            widgets: [],
-            pageSettings: { title: '', status: 'Draft', bg_color: '#ffffff', custom_css: '' },
-            selectedId: null,
-            clipboard: null,
+            pageData: { widgets: [], settings: {} }, // Root data structure
+            selectedWidgetId: null,
+            draggedWidgetType: null,
+            draggedWidgetId: null,
             history: [],
             historyIndex: -1,
-            maxHistory: 20,
-            draggedType: null, draggedId: null,
-            hasUnsavedChanges: false
+            hasChanges: false
         };
 
-        // --- Register Core Widgets ---
+        // --- 1. PLUGIN SYSTEM & REGISTRY ---
+        const SiteBuilder = {
+            widgets: {},
+            controls: {},
+            hooks: {},
+
+            registerWidget: (type, def) => {
+                SiteBuilder.widgets[type] = def;
+                renderLibrary(); // Refresh UI
+            },
+
+            registerControl: (type, renderer) => {
+                SiteBuilder.controls[type] = renderer;
+            },
+
+            // Create a fresh widget instance
+            createWidgetData: (type) => {
+                const def = SiteBuilder.widgets[type];
+                return {
+                    id: 'w_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    type: type,
+                    content: JSON.parse(JSON.stringify(def.defaultContent || {})),
+                    settings: {
+                        style: JSON.parse(JSON.stringify(def.defaultStyle || {})),
+                        advanced: { margin: '0px', padding: '0px', classes: '' }
+                    },
+                    children: [] // For containers
+                };
+            }
+        };
+
+        // --- 2. DEFAULT WIDGET DEFINITIONS ---
+
+        // Container
+        SiteBuilder.registerWidget('container', {
+            label: 'Container', icon: 'fa-box',
+            defaultContent: {},
+            defaultStyle: {
+                display: 'flex', flexDirection: 'column', gap: '10px',
+                backgroundColor: 'transparent', minHeight: '100px', padding: '20px'
+            },
+            render: (w) => `<div class="ce-container ${w.children.length === 0 ? 'empty' : ''}" style="${generateStyleString(w)}"></div>`,
+            inspector: {
+                content: [], // Containers usually structure only
+                style: [
+                    { label: 'Direction', key: 'flexDirection', type: 'select', options: ['column', 'row'] },
+                    { label: 'Gap', key: 'gap', type: 'text' },
+                    { label: 'Background', key: 'backgroundColor', type: 'color' },
+                    { label: 'Min Height', key: 'minHeight', type: 'text' }
+                ]
+            }
+        });
+
+        // Heading
         SiteBuilder.registerWidget('heading', {
-            name: 'Heading', icon: 'fa-heading',
-            default: { text: 'Heading', tag: 'h2', align: 'left', color: '#333' },
-            render: (d) => `<${d.tag} style="text-align:${d.align}; color:${d.color}; margin:${d.margin || '0'}; padding:${d.padding || '0'};">${d.text}</${d.tag}>`,
-            editable: true,
-            controls: {
+            label: 'Heading', icon: 'fa-heading',
+            defaultContent: { text: 'Add Your Heading Here', tag: 'h2' },
+            defaultStyle: { color: '#333', textAlign: 'left', fontSize: '32px' },
+            render: (w) => `<${w.content.tag} style="${generateStyleString(w)}">${w.content.text}</${w.content.tag}>`,
+            editable: true, // Contenteditable enabled
+            inspector: {
                 content: [
-                    { label: 'Title', key: 'text', type: 'text' },
-                    { label: 'Tag', key: 'tag', type: 'select', options: ['h1','h2','h3','div'] },
-                    { label: 'Align', key: 'align', type: 'select', options: ['left','center','right'] }
+                    { label: 'Title', key: 'text', type: 'textarea' },
+                    { label: 'HTML Tag', key: 'tag', type: 'select', options: ['h1', 'h2', 'h3', 'h4', 'div'] }
                 ],
-                style: [ { label: 'Color', key: 'color', type: 'color' } ]
+                style: [
+                    { label: 'Text Color', key: 'color', type: 'color' },
+                    { label: 'Alignment', key: 'textAlign', type: 'select', options: ['left', 'center', 'right'] },
+                    { label: 'Typography Size', key: 'fontSize', type: 'text' }
+                ]
             }
         });
+
+        // Text Editor
         SiteBuilder.registerWidget('text', {
-            name: 'Text', icon: 'fa-align-left',
-            default: { text: 'Lorem ipsum...', color: '#666', size: '14' },
-            render: (d) => `<div style="color:${d.color}; font-size:${d.size}px; margin:${d.margin || '0'}; padding:${d.padding || '0'};">${d.text}</div>`,
+            label: 'Text Editor', icon: 'fa-align-left',
+            defaultContent: { text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut elit tellus, luctus nec ullamcorper mattis, pulvinar dapibus leo.' },
+            defaultStyle: { color: '#666', textAlign: 'left', fontSize: '16px', lineHeight: '1.6' },
+            render: (w) => `<div style="${generateStyleString(w)}">${w.content.text}</div>`,
             editable: true,
-            controls: {
-                content: [ { label: 'Content', key: 'text', type: 'textarea' } ],
-                style: [ { label: 'Color', key: 'color', type: 'color' }, { label: 'Size', key: 'size', type: 'range', min:10, max:100 } ]
+            inspector: {
+                content: [{ label: 'Content', key: 'text', type: 'textarea' }],
+                style: [
+                    { label: 'Color', key: 'color', type: 'color' },
+                    { label: 'Font Size', key: 'fontSize', type: 'text' }
+                ]
             }
         });
+
+        // Button
         SiteBuilder.registerWidget('button', {
-            name: 'Button', icon: 'fa-mouse-pointer',
-            default: { text: 'Click Me', bg: '#61ce70', color: '#fff', align: 'left' },
-            render: (d) => `<div style="text-align:${d.align}; margin:${d.margin || '0'}; padding:${d.padding || '0'};"><a style="display:inline-block; padding:10px 20px; background:${d.bg}; color:${d.color}; text-decoration:none;">${d.text}</a></div>`,
-            controls: {
-                content: [ { label: 'Text', key: 'text', type: 'text' }, { label: 'Align', key: 'align', type: 'select', options: ['left','center','right'] } ],
-                style: [ { label: 'Bg Color', key: 'bg', type: 'color' }, { label: 'Text Color', key: 'color', type: 'color' } ]
+            label: 'Button', icon: 'fa-mouse-pointer',
+            defaultContent: { text: 'Click Here', link: '#' },
+            defaultStyle: { backgroundColor: '#61ce70', color: '#fff', borderRadius: '4px', padding: '12px 24px', display: 'inline-block' },
+            render: (w) => `<div style="text-align:${w.settings.style.textAlign || 'left'}"><a href="${w.content.link}" style="${generateStyleString(w)} text-decoration:none;">${w.content.text}</a></div>`,
+            inspector: {
+                content: [
+                    { label: 'Text', key: 'text', type: 'text' },
+                    { label: 'Link', key: 'link', type: 'text' }
+                ],
+                style: [
+                    { label: 'Alignment', key: 'textAlign', type: 'select', options: ['left', 'center', 'right'] },
+                    { label: 'Background', key: 'backgroundColor', type: 'color' },
+                    { label: 'Text Color', key: 'color', type: 'color' },
+                    { label: 'Border Radius', key: 'borderRadius', type: 'text' }
+                ]
             }
         });
 
-        // --- Add Global Advanced Controls via Filters (Plugin Style) ---
-        SiteBuilder.addFilter('widget_controls_advanced', (controls) => {
-            return [
-                { label: 'Margin (e.g. 10px)', key: 'margin', type: 'text' },
-                { label: 'Padding (e.g. 10px)', key: 'padding', type: 'text' },
-                { label: 'CSS Classes', key: 'css_classes', type: 'text' },
-                { label: 'Z-Index', key: 'z_index', type: 'range', min:0, max:100 }
-            ];
+        // Image
+        SiteBuilder.registerWidget('image', {
+            label: 'Image', icon: 'fa-image',
+            defaultContent: { src: 'https://via.placeholder.com/800x400' },
+            defaultStyle: { width: '100%', borderRadius: '0px' },
+            render: (w) => `<img src="${w.content.src}" style="${generateStyleString(w)} display:block; height:auto;">`,
+            inspector: {
+                content: [{ label: 'Image URL', key: 'src', type: 'text' }],
+                style: [
+                    { label: 'Width', key: 'width', type: 'text' },
+                    { label: 'Border Radius', key: 'borderRadius', type: 'text' }
+                ]
+            }
         });
 
-        // --- Initialization ---
+        // --- 3. HELPER FUNCTIONS ---
+        function generateStyleString(widget) {
+            const s = widget.settings.style;
+            const a = widget.settings.advanced;
+            let str = '';
+            for (const [k, v] of Object.entries(s)) {
+                // Convert camelCase to kebab-case
+                const cssKey = k.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                str += `${cssKey}:${v}; `;
+            }
+            // Add Advanced styles
+            if (a.margin) str += `margin:${a.margin}; `;
+            if (a.padding) str += `padding:${a.padding}; `;
+            return str;
+        }
+
+        // --- 4. INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             AppState.pageId = params.get('page');
+
             initSidebar();
+
             if (AppState.pageId) {
-                const pageData = Pages.getById(AppState.pageId);
-                if (pageData) {
-                    AppState.widgets = pageData.widgets || [];
-                    if(pageData.settings) AppState.pageSettings = { ...AppState.pageSettings, ...pageData.settings };
-                    renderCanvas();
-                    pushHistory("Initial Load");
-                    markChanges(false);
+                const dbData = Pages.getById(AppState.pageId);
+                if (dbData) {
+                    // Merge saved widgets or default to empty
+                    AppState.pageData.widgets = dbData.widgets || [];
+                    renderPage();
+                    saveHistoryState(); // Initial state
                 }
             }
-            dragElement(document.getElementById("structure-panel"));
-            document.addEventListener('keydown', handleShortcuts);
         });
 
-        function initSidebar() { renderWidgetList(SiteBuilder.getAllWidgets()); }
-        function renderWidgetList(keys) {
-            const grid = document.getElementById('widget-grid'); grid.innerHTML = '';
-            keys.forEach(key => {
-                const w = SiteBuilder.getWidget(key);
-                const card = document.createElement('div'); card.className = 'widget-card'; card.draggable = true;
-                card.innerHTML = `<i class="fas ${w.icon}"></i><span>${w.name}</span>`;
-                card.ondragstart = (e) => { AppState.draggedType = key; AppState.draggedId = null; e.dataTransfer.effectAllowed = 'copy'; };
-                card.onclick = () => addWidget(key);
+        function initSidebar() {
+            renderLibrary();
+        }
+
+        function renderLibrary() {
+            const grid = document.getElementById('widget-library');
+            grid.innerHTML = '';
+
+            Object.keys(SiteBuilder.widgets).forEach(type => {
+                const def = SiteBuilder.widgets[type];
+                const card = document.createElement('div');
+                card.className = 'widget-card';
+                card.draggable = true;
+                card.innerHTML = `<i class="fas ${def.icon}"></i><span>${def.label}</span>`;
+
+                card.ondragstart = (e) => {
+                    AppState.draggedWidgetType = type;
+                    AppState.draggedWidgetId = null; // New widget
+                    e.dataTransfer.effectAllowed = 'copy';
+                };
+
+                // Click to add to bottom
+                card.onclick = () => {
+                    const newW = SiteBuilder.createWidgetData(type);
+                    AppState.pageData.widgets.push(newW);
+                    updateCanvas();
+                };
+
                 grid.appendChild(card);
             });
         }
-        function filterWidgets(q) {
-            renderWidgetList(SiteBuilder.getAllWidgets().filter(k => SiteBuilder.getWidget(k).name.toLowerCase().includes(q.toLowerCase())));
-        }
 
-        // --- Widget Logic ---
-        function addWidget(type, index) {
-            const def = SiteBuilder.getWidget(type);
-            const newWidget = { id: 'w_' + Date.now(), type, data: JSON.parse(JSON.stringify(def.default)) };
-            if (index !== undefined && index !== null) {
-                if(index >= AppState.widgets.length) AppState.widgets.push(newWidget); else AppState.widgets.splice(index, 0, newWidget);
-            } else AppState.widgets.push(newWidget);
-            renderCanvas(); selectWidget(newWidget.id); pushHistory(`Added ${def.name}`);
-        }
+        // --- 5. RENDER ENGINE (RECURSIVE) ---
+        function renderPage() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = ''; // Clear
 
-        function renderCanvas() {
-            const canvas = document.getElementById('canvas'); canvas.innerHTML = '';
-            canvas.style.backgroundColor = AppState.pageSettings.bg_color;
-            let styleTag = document.getElementById('custom-css'); 
-            if(!styleTag) { styleTag = document.createElement('style'); styleTag.id = 'custom-css'; document.head.appendChild(styleTag); }
-            styleTag.textContent = AppState.pageSettings.custom_css;
-
-            AppState.widgets.forEach(w => {
-                const def = SiteBuilder.getWidget(w.type);
-                const el = document.createElement('div');
-                el.className = `builder-element ${AppState.selectedId === w.id ? 'selected' : ''}`;
-                el.id = w.id; el.draggable = true;
-                if(w.data.z_index) el.style.zIndex = w.data.z_index;
-                
-                el.innerHTML = `<div class="element-handle"><i class="fas fa-arrows-alt"></i> ${def.name}</div><div class="element-actions"><div class="action-btn" onclick="handleAction('duplicate','${w.id}')"><i class="fas fa-copy"></i></div><div class="action-btn delete" onclick="handleAction('delete','${w.id}')"><i class="fas fa-times"></i></div></div><div class="element-content" ${def.editable ? 'contenteditable="true"' : ''}>${def.render(w.data)}</div>`;
-                
-                if(def.editable) {
-                    const contentDiv = el.querySelector('.element-content');
-                    contentDiv.addEventListener('input', () => { w.data.text = contentDiv.innerText; markChanges(true); });
-                    contentDiv.addEventListener('click', (e) => { e.stopPropagation(); selectWidget(w.id); });
-                }
-
-                el.ondragstart = (e) => { e.stopPropagation(); AppState.draggedType=null; AppState.draggedId=w.id; e.dataTransfer.effectAllowed='move'; };
-                el.onclick = (e) => { e.stopPropagation(); selectWidget(w.id); };
-                el.oncontextmenu = (e) => showContextMenu(e, w.id);
-                canvas.appendChild(el);
+            // Render Root Widgets
+            AppState.pageData.widgets.forEach((widget, index) => {
+                const node = createWidgetNode(widget, AppState.pageData.widgets, index);
+                canvas.appendChild(node);
             });
-            renderStructureList();
         }
 
-        // --- Settings & Controls ---
+        function createWidgetNode(widget, parentArray, index) {
+            const def = SiteBuilder.widgets[widget.type];
+            if (!def) return document.createElement('div');
+
+            // 1. Create Wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = `ce-widget ${AppState.selectedWidgetId === widget.id ? 'selected' : ''}`;
+            wrapper.id = widget.id;
+            wrapper.draggable = true;
+            if (widget.settings.advanced.classes) wrapper.className += ' ' + widget.settings.advanced.classes;
+
+            // 2. Render HTML Content
+            const innerHTML = def.render(widget);
+            wrapper.innerHTML = innerHTML;
+
+            // 3. Recursive Children (For Containers)
+            if (widget.children) {
+                // Find the container element inside the rendered HTML (usually it IS the rendered HTML, but safer to query)
+                // If the render function returns a single div, we append children to it.
+                const containerNode = wrapper.firstElementChild;
+                if (containerNode) {
+                    widget.children.forEach((child, childIndex) => {
+                        const childNode = createWidgetNode(child, widget.children, childIndex);
+                        containerNode.appendChild(childNode);
+                    });
+                }
+            }
+
+            // 4. Attach Handles/Tools
+            const handle = document.createElement('div');
+            handle.className = 'widget-handle';
+            handle.innerHTML = `<i class="fas ${def.icon}" style="margin-right:5px;"></i> ${def.label}`;
+            wrapper.appendChild(handle);
+
+            const tools = document.createElement('div');
+            tools.className = 'widget-tools';
+            tools.innerHTML = `
+                <div class="tool-btn" title="Duplicate" onclick="duplicateWidget('${widget.id}')"><i class="fas fa-copy"></i></div>
+                <div class="tool-btn delete" title="Delete" onclick="deleteWidget('${widget.id}')"><i class="fas fa-times"></i></div>
+            `;
+            wrapper.appendChild(tools);
+
+            // 5. Events
+            wrapper.onclick = (e) => {
+                e.stopPropagation();
+                selectWidget(widget.id);
+            };
+
+            // Inline Editing
+            if (def.editable) {
+                // Find the actual text element (h2, p, div)
+                const contentEl = wrapper.querySelector('[contenteditable]') || wrapper.firstElementChild;
+                if (contentEl) {
+                    contentEl.contentEditable = "true";
+                    contentEl.addEventListener('input', (e) => {
+                        widget.content.text = contentEl.innerText; // Sync model
+                        markChange();
+                    });
+                    // Prevent drag start on text edit
+                    contentEl.onclick = (e) => e.stopPropagation();
+                }
+            }
+
+            // Drag Events (Wrapper)
+            wrapper.ondragstart = (e) => {
+                e.stopPropagation();
+                AppState.draggedWidgetId = widget.id;
+                AppState.draggedWidgetType = null;
+                e.dataTransfer.effectAllowed = 'move';
+                wrapper.classList.add('dragging');
+            };
+            wrapper.ondragend = (e) => {
+                wrapper.classList.remove('dragging');
+                document.querySelectorAll('.drop-placeholder').forEach(el => el.remove());
+            };
+
+            // Drop Target Logic
+            wrapper.ondragover = handleDragOver;
+            wrapper.ondrop = (e) => handleDrop(e, widget); // Pass target widget (container)
+
+            return wrapper;
+        }
+
+        // --- 6. DRAG AND DROP LOGIC ---
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Show indicator logic could go here (complex for single file, skipping visual line for now)
+        }
+
+        function handleDrop(e, targetParentWidget) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const type = AppState.draggedWidgetType;
+            const moveId = AppState.draggedWidgetId;
+
+            // 1. Determine Target Array
+            // If dropped on a container, push to its children. 
+            // If dropped on Canvas (handled by main drop), push to pageData.widgets
+            // This handler is for WIDGETS acting as drop targets (Nested)
+
+            // Only Containers accept drop inside
+            if (targetParentWidget && SiteBuilder.widgets[targetParentWidget.type].label !== 'Container') {
+                // If dropping on a non-container, usually we want to drop AFTER it in the parent
+                // For simplicity in this version: Only drop INSIDE containers allowed via UI
+                return;
+            }
+
+            const targetArray = targetParentWidget ? targetParentWidget.children : AppState.pageData.widgets;
+
+            if (type) {
+                // ADD NEW
+                const newW = SiteBuilder.createWidgetData(type);
+                targetArray.push(newW);
+            } else if (moveId) {
+                // MOVE EXISTING
+                // 1. Find and remove from old location
+                const { widget, parentArr } = findWidgetById(moveId, AppState.pageData.widgets);
+                if (!widget) return;
+
+                // Prevent dropping into self
+                if (widget.id === targetParentWidget?.id) return;
+
+                const idx = parentArr.indexOf(widget);
+                parentArr.splice(idx, 1);
+
+                // 2. Add to new location
+                targetArray.push(widget);
+            }
+
+            updateCanvas();
+        }
+
+        // Canvas Background Drop (Root Level)
+        document.getElementById('canvas').ondragover = (e) => e.preventDefault();
+        document.getElementById('canvas').ondrop = (e) => {
+            e.preventDefault();
+            // Only handle if not stopped by inner elements
+            if (e.target.id !== 'canvas') return;
+            handleDrop(e, null); // Null means root
+        };
+
+        // --- 7. STATE MANAGEMENT HELPERS ---
+        function findWidgetById(id, list) {
+            for (let i = 0; i < list.length; i++) {
+                if (list[i].id === id) return { widget: list[i], parentArr: list };
+                if (list[i].children && list[i].children.length > 0) {
+                    const found = findWidgetById(id, list[i].children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function updateCanvas() {
+            renderPage();
+            markChange();
+        }
+
+        function markChange() {
+            AppState.hasChanges = true;
+            document.getElementById('btn-save').classList.add('active');
+            // Debounce history push?
+        }
+
+        // --- 8. INSPECTOR PANEL ---
         function selectWidget(id) {
-            AppState.selectedId = id; renderCanvas();
-            document.getElementById('widget-view').style.display = 'none';
-            document.getElementById('page-settings-view').classList.remove('active');
-            document.getElementById('settings-view').classList.add('active');
-            renderSettings(id);
-        }
+            AppState.selectedWidgetId = id;
+            renderPage(); // Refresh selection borders
 
-        function renderSettings(id) {
-            const widget = AppState.widgets.find(w => w.id === id);
-            const def = SiteBuilder.getWidget(widget.type);
-            document.getElementById('settings-title').textContent = `Edit ${def.name}`;
-            window.currentWidget = widget; window.currentWidgetDef = def;
+            const { widget } = findWidgetById(id, AppState.pageData.widgets);
+            if (!widget) return;
+
+            // Switch to Inspector View
+            document.getElementById('sidebar-library').style.display = 'none';
+            document.getElementById('inspector').classList.add('active');
+            document.getElementById('inspector-title').textContent = 'Edit ' + SiteBuilder.widgets[widget.type].label;
+
+            // Render Controls
+            window.activeWidget = widget; // Global ref for controls
             switchTab('content');
         }
 
-        function switchTab(tabName) {
-            if (!AppState.selectedId) return;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            const container = document.getElementById('settings-body'); container.innerHTML = '';
-
-            let fields = [];
-            if(tabName === 'advanced') {
-                // Use the Filter System for Advanced Tab
-                fields = SiteBuilder.applyFilters('widget_controls_advanced', []);
-            } else {
-                fields = window.currentWidgetDef.controls[tabName] || [];
-            }
-
-            if(fields.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#888;">No settings.</div>'; return; }
-
-            const accItem = document.createElement('div'); accItem.className = 'accordion-item active';
-            accItem.innerHTML = `<div class="accordion-header"><span>Settings</span> <i class="fas fa-chevron-down"></i></div>`;
-            const accBody = document.createElement('div'); accBody.className = 'accordion-body';
-
-            fields.forEach(field => {
-                const group = document.createElement('div'); group.className = 'control-group';
-                group.innerHTML = `<label class="control-label">${field.label}</label>`;
-                
-                // Use the Dynamic Renderer
-                const inputEl = SiteBuilder.renderControl(field, window.currentWidget.data[field.key], (newVal) => {
-                    window.currentWidget.data[field.key] = newVal;
-                    renderCanvas();
-                    markChanges(true); // Flag update
-                });
-                
-                // History trigger on change (lazy)
-                inputEl.addEventListener('change', () => pushHistory(`Edit ${field.label}`));
-
-                group.appendChild(inputEl); accBody.appendChild(group);
-            });
-
-            accItem.appendChild(accBody); container.appendChild(accItem);
+        function showLibrary() {
+            AppState.selectedWidgetId = null;
+            renderPage();
+            document.getElementById('inspector').classList.remove('active');
+            document.getElementById('sidebar-library').style.display = 'flex';
         }
 
-        function markChanges(val) {
-            AppState.hasUnsavedChanges = val;
-            const btn = document.getElementById('btn-save');
-            if(val) { btn.classList.add('has-changes'); btn.innerText = 'UPDATE'; }
-            else { btn.classList.remove('has-changes'); }
+        function switchTab(tab) {
+            // UI
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const container = document.getElementById('inspector-content');
+            container.innerHTML = '';
+
+            const def = SiteBuilder.widgets[window.activeWidget.type];
+            let controls = [];
+
+            if (tab === 'advanced') {
+                // Global Advanced Controls
+                controls = [
+                    { label: 'Margin (e.g. 10px 20px)', key: 'margin', type: 'text', section: 'advanced' },
+                    { label: 'Padding', key: 'padding', type: 'text', section: 'advanced' },
+                    { label: 'CSS Classes', key: 'classes', type: 'text', section: 'advanced' }
+                ];
+            } else {
+                controls = def.inspector[tab] || [];
+            }
+
+            if (controls.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#999;">No options available</div>';
+                return;
+            }
+
+            // Grouping? For now just flat list
+            const section = document.createElement('div');
+            section.className = 'control-section open';
+            section.innerHTML = `<div class="control-head">Settings</div><div class="control-body"></div>`;
+            const body = section.querySelector('.control-body');
+
+            controls.forEach(ctrl => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'control-group';
+                wrapper.innerHTML = `<label class="control-label">${ctrl.label}</label>`;
+
+                // Determine Value path
+                // settings.style[key] OR content[key] OR settings.advanced[key]
+                let val = '';
+                if (tab === 'content') val = window.activeWidget.content[ctrl.key];
+                else if (tab === 'advanced') val = window.activeWidget.settings.advanced[ctrl.key];
+                else val = window.activeWidget.settings.style[ctrl.key];
+
+                // Input Renderer
+                const input = createInput(ctrl, val);
+                input.addEventListener('input', (e) => {
+                    const newVal = e.target.value;
+                    if (tab === 'content') window.activeWidget.content[ctrl.key] = newVal;
+                    else if (tab === 'advanced') window.activeWidget.settings.advanced[ctrl.key] = newVal;
+                    else window.activeWidget.settings.style[ctrl.key] = newVal;
+
+                    renderPage(); // Live Preview
+                    markChange();
+                });
+
+                wrapper.appendChild(input);
+                body.appendChild(wrapper);
+            });
+
+            container.appendChild(section);
+        }
+
+        function createInput(ctrl, value) {
+            let input;
+            if (ctrl.type === 'textarea') {
+                input = document.createElement('textarea');
+                input.rows = 4;
+            } else if (ctrl.type === 'select') {
+                input = document.createElement('select');
+                ctrl.options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt; o.innerText = opt;
+                    if (value === opt) o.selected = true;
+                    input.appendChild(o);
+                });
+                return input; // Return early
+            } else if (ctrl.type === 'color') {
+                input = document.createElement('input');
+                input.type = 'color';
+                input.style.height = '35px';
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+            }
+            input.className = 'control-input';
+            input.value = value || '';
+            return input;
+        }
+
+        // --- 9. ACTIONS ---
+        function deleteWidget(id) {
+            const res = findWidgetById(id, AppState.pageData.widgets);
+            if (res) {
+                const idx = res.parentArr.indexOf(res.widget);
+                res.parentArr.splice(idx, 1);
+                showLibrary(); // Deselect
+                updateCanvas();
+            }
+        }
+
+        function duplicateWidget(id) {
+            const res = findWidgetById(id, AppState.pageData.widgets);
+            if (res) {
+                // Deep clone with new IDs
+                const clone = JSON.parse(JSON.stringify(res.widget));
+                regenerateIds(clone);
+                const idx = res.parentArr.indexOf(res.widget);
+                res.parentArr.splice(idx + 1, 0, clone);
+                updateCanvas();
+            }
+        }
+
+        function regenerateIds(w) {
+            w.id = 'w_' + Date.now() + Math.random().toString(36).substr(2, 3);
+            if (w.children) w.children.forEach(c => regenerateIds(c));
         }
 
         function savePage() {
-            if(!AppState.hasUnsavedChanges) return;
-            const btn = document.getElementById('btn-save'); btn.innerText = 'SAVING...';
-            Pages.update(AppState.pageId, { widgets: AppState.widgets, settings: AppState.pageSettings });
-            setTimeout(() => { markChanges(false); }, 800);
+            const btn = document.getElementById('btn-save');
+            btn.innerText = 'SAVING...';
+            Pages.update(AppState.pageId, { widgets: AppState.pageData.widgets });
+            AppState.hasChanges = false;
+            setTimeout(() => {
+                btn.innerText = 'UPDATE';
+                btn.classList.remove('active');
+            }, 800);
         }
 
-        // --- Drag/Drop Handlers (Standard) ---
-        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='copy'; }
-        function handleDrop(e) {
-            e.preventDefault();
-            // ... (Same logic as previous, simplified for brevity in this block, essentially finds index and calls add/moveWidget)
-            // Implementation relies on placeholder existence
-            const canvas = document.getElementById('canvas');
-            const afterElement = getDragAfterElement(canvas, e.clientY);
-            let index = AppState.widgets.length;
-            if(afterElement) {
-                const els = [...canvas.querySelectorAll('.builder-element')];
-                index = els.indexOf(afterElement);
-            }
-            if(AppState.draggedType) addWidget(AppState.draggedType, index);
-            else if(AppState.draggedId) moveWidget(AppState.draggedId, index);
-            AppState.draggedType=null; AppState.draggedId=null;
-        }
-        function getDragAfterElement(container, y) {
-             const draggableElements = [...container.querySelectorAll('.builder-element:not(.dragging)')];
-             return draggableElements.reduce((closest, child) => {
-                 const box = child.getBoundingClientRect();
-                 const offset = y - box.top - box.height / 2;
-                 if (offset < 0 && offset > closest.offset) return { offset: offset, element: child }; else return closest;
-             }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-        function moveWidget(id, newIdx) {
-            const oldIdx = AppState.widgets.findIndex(w=>w.id===id);
-            const [item] = AppState.widgets.splice(oldIdx, 1);
-            if(oldIdx < newIdx) newIdx--;
-            AppState.widgets.splice(newIdx, 0, item);
-            renderCanvas(); selectWidget(id); pushHistory('Moved Widget');
+        // --- 10. UTILS ---
+        function setDevice(mode) {
+            document.getElementById('canvas').className = mode === 'desktop' ? '' : mode;
+            document.querySelectorAll('.bar-group .btn-tool').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
         }
 
-        // --- Standard UI Helpers ---
-        function showWidgetLibrary() {
-            AppState.selectedId = null; renderCanvas();
-            document.getElementById('settings-view').classList.remove('active');
-            document.getElementById('page-settings-view').classList.remove('active');
-            document.getElementById('widget-view').style.display = 'block';
-        }
         function toggleSidebar() {
-            document.getElementById('main-sidebar').classList.toggle('collapsed');
+            document.getElementById('sidebar').classList.toggle('collapsed');
         }
-        function toggleStructure() {
-            const p = document.getElementById('structure-panel');
-            p.style.display = p.style.display==='flex'?'none':'flex';
+
+        function deselectAll(e) {
+            if (e.target.id === 'canvas-wrapper' || e.target.id === 'canvas') {
+                showLibrary();
+            }
         }
-        function renderStructureList() {
-             const list = document.getElementById('struct-list'); list.innerHTML='';
-             AppState.widgets.forEach(w=>{
-                 const d = SiteBuilder.getWidget(w.type);
-                 const i = document.createElement('div'); i.className=`struct-item ${AppState.selectedId===w.id?'active':''}`;
-                 i.innerHTML=`<div class="struct-icon"><i class="fas ${d.icon}"></i></div> ${d.name}`;
-                 i.onclick=()=>selectWidget(w.id); list.appendChild(i);
-             });
+
+        function undo() { console.log('Undo not implemented in this demo'); }
+        function redo() { console.log('Redo not implemented in this demo'); }
+        function saveHistoryState() { /* Placeholder */ }
+        function filterWidgets(q) {
+            // Simple filter logic could toggle display of .widget-card based on text
+            const cards = document.querySelectorAll('.widget-card');
+            cards.forEach(c => {
+                const txt = c.innerText.toLowerCase();
+                c.style.display = txt.includes(q.toLowerCase()) ? 'flex' : 'none';
+            });
         }
-        function dragElement(elmnt) {
-            let pos1=0,pos2=0,pos3=0,pos4=0;
-            if(document.getElementById("struct-header")) document.getElementById("struct-header").onmousedown = dragMouseDown;
-            function dragMouseDown(e) { e.preventDefault(); pos3=e.clientX; pos4=e.clientY; document.onmouseup=closeDragElement; document.onmousemove=elementDrag; }
-            function elementDrag(e) { e.preventDefault(); pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY; elmnt.style.top=(elmnt.offsetTop-pos2)+"px"; elmnt.style.left=(elmnt.offsetLeft-pos1)+"px"; }
-            function closeDragElement() { document.onmouseup=null; document.onmousemove=null; }
-        }
-        function exportPage() {
-             // (Export logic similar to previous)
-             alert("Exporting HTML..."); 
-        }
-        function pushHistory(name) {
-            // (History logic)
-             markChanges(true);
-        }
-        function undo() { /* Undo logic */ }
-        function redo() { /* Redo logic */ }
-        function handleShortcuts(e) { /* Shortcuts */ }
-        function deselectAll() { showWidgetLibrary(); }
-        function handleAction(a, id) { /* Actions */ }
-        function showContextMenu(e, id) { /* Ctx Menu */ }
-        function showPageSettings() { /* Page Settings */ }
-        function previewPage() { /* Preview */ }
-        function setMode(m, b) { document.getElementById('canvas').className=m==='desktop'?'':m; }
+        function previewPage() { alert('Preview mode (UI hidden)'); }
+
     </script>
 </body>
+
 </html>
