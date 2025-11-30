@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiteBuilder - Editor</title>
+    <!-- External Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+      <link rel="stylesheet" href="styles/builder.css">
+</head>
+<body>
+
+    <!-- 
+      ========================================
+      FILE: builder.html (Markup)
+      ======================================== 
+    -->
+    
+    <!-- Top Toolbar -->
+    <header id="top-bar">
+        <div class="toolbar-group">
+            <button class="btn-tool" title="Back to Dashboard" onclick="window.history.back()">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div style="width: 1px; background: #ddd; height: 20px; margin: 0 10px;"></div>
+            <button class="btn-tool" id="btn-undo"><i class="fas fa-undo"></i></button>
+            <button class="btn-tool" id="btn-redo"><i class="fas fa-redo"></i></button>
+        </div>
+
+        <div class="toolbar-group">
+            <button class="btn-tool active" onclick="setResponsiveMode('desktop', this)">
+                <i class="fas fa-desktop"></i>
+            </button>
+            <button class="btn-tool" onclick="setResponsiveMode('tablet', this)">
+                <i class="fas fa-tablet-alt"></i>
+            </button>
+            <button class="btn-tool" onclick="setResponsiveMode('mobile', this)">
+                <i class="fas fa-mobile-alt"></i>
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <button class="btn-tool" id="btn-preview">Preview</button>
+            <button class="btn-primary" id="btn-save">Save</button>
+            <button class="btn-tool" id="btn-export" style="color: var(--accent); border: 1px solid var(--accent);">Export</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div id="workspace">
+        
+        <!-- Left Panel: Widgets -->
+        <aside id="widget-panel">
+            <div class="panel-header">Elements</div>
+            <div class="widget-list" id="widget-list">
+                <!-- Widgets injected via JS -->
+            </div>
+            
+            <!-- Plugin Hook Placeholder -->
+            <div id="plugin-widgets-area" style="padding: 10px; border-top: 1px solid #eee;">
+                <!-- Plugins can render here -->
+            </div>
+        </aside>
+
+        <!-- Center: Canvas -->
+        <main id="canvas-wrapper">
+            <div id="canvas">
+                <!-- Elements will be dropped here -->
+                <div class="empty-canvas-msg">
+                    <i class="fas fa-plus-circle" style="font-size: 32px; margin-bottom: 10px;"></i><br>
+                    Select an element from the left to add it.
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Settings -->
+        <aside id="settings-panel">
+            <div class="settings-tabs">
+                <button class="tab-btn active" onclick="switchTab('content')">Content</button>
+                <button class="tab-btn" onclick="switchTab('style')">Style</button>
+                <button class="tab-btn" onclick="switchTab('advanced')">Advanced</button>
+            </div>
+            <div id="settings-content">
+                <p style="color: #999; text-align: center; margin-top: 20px;">Select an element to edit settings.</p>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- 
+      ========================================
+      FILE: /scripts/builder.js
+      ======================================== 
+    -->
+    <script src="scripts/builder.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+
+        :root {
+            --sidebar-width: 280px;
+            --topbar-height: 60px;
+            --bg-dark: #2d2d2d;
+            --bg-panel: #ffffff;
+            --bg-canvas: #e0e0e0;
+            --accent: #0073aa;
+            --text-main: #333;
+            --text-light: #777;
+            --border: #ddd;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Top Toolbar --- */
+        #top-bar {
+            height: var(--topbar-height);
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-tool {
+            background: none;
+            border: 1px solid transparent;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+
+        .btn-tool:hover { background: #f0f0f0; }
+        .btn-tool.active { background: #e6f7ff; color: var(--accent); border-color: var(--accent); }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+
+        /* --- Main Workspace --- */
+        #workspace {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - var(--topbar-height));
+            overflow: hidden;
+        }
+
+        /* --- Left Sidebar (Widgets) --- */
+        #widget-panel {
+            width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            background: #f9f9f9;
+        }
+
+        .widget-list {
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .widget-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px 5px;
+            cursor: grab;
+            transition: all 0.2s;
+        }
+
+        .widget-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .widget-item i { font-size: 20px; color: var(--text-light); margin-bottom: 8px; }
+        .widget-item span { font-size: 12px; color: var(--text-main); font-weight: 500; }
+
+        /* --- Canvas Area --- */
+        #canvas-wrapper {
+            flex: 1;
+            background: var(--bg-canvas);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px;
+            overflow-y: auto;
+            transition: background 0.3s;
+        }
+
+        #canvas {
+            background: white;
+            min-height: 80vh;
+            width: 100%; /* Default Desktop */
+            max-width: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            transition: width 0.3s ease, padding 0.3s ease;
+            position: relative;
+            padding: 2px; /* For selection border visibility */
+        }
+
+        /* Responsive Canvas Modes */
+        #canvas.tablet-mode { width: 768px; }
+        #canvas.mobile-mode { width: 375px; }
+
+        /* Canvas Elements */
+        .builder-element {
+            position: relative;
+            border: 1px dashed transparent;
+            padding: 5px;
+        }
+
+        .builder-element:hover {
+            border-color: var(--accent);
+        }
+
+        .builder-element.selected {
+            border: 2px solid var(--accent);
+        }
+
+        .element-actions {
+            position: absolute;
+            top: -25px;
+            right: 0;
+            background: var(--accent);
+            display: none;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .builder-element:hover .element-actions,
+        .builder-element.selected .element-actions {
+            display: flex;
+        }
+
+        .action-handle {
+            padding: 4px 8px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .action-handle:hover { background: rgba(0,0,0,0.1); }
+        .action-delete { background: #dc3545; border-radius: 0 4px 0 0; }
+
+        /* --- Right Sidebar (Settings) --- */
+        #settings-panel {
+            width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-light);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        #settings-content {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .control-label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: 500; }
+        .control-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        /* --- Empty State --- */
+        .empty-canvas-msg {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+            border: 2px dashed #ccc;
+            margin: 20px;
+            border-radius: 8px;
+        }
+    
