@@ -3,137 +3,529 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SiteBuilder Dashboard</title>
-    <!-- External Assets -->
+    <title>Dashboard - Pages</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-   <link rel="stylesheet" href="styles/dashboard.css">
+    <!-- INLINE STORAGE MODULE (Normally /scripts/pages.js) -->
+    <script>
+        const DB_KEY='sitebuilder_pages';
+        const Pages = {
+            getAll: () => {
+                const e = localStorage.getItem(DB_KEY);
+                return e ? JSON.parse(e) : [];
+            },
+            getById: e => {
+                const t = Pages.getAll();
+                return t.find(t => t.id === e) || null;
+            },
+            create: (e = "Untitled Page") => {
+                const t = Pages.getAll();
+                const a = {
+                    id: "page_" + Date.now(),
+                    title: e,
+                    status: "Draft",
+                    author: "Admin",
+                    lastModified: (new Date).toLocaleString(),
+                    widgets: []
+                };
+                t.push(a);
+                localStorage.setItem(DB_KEY, JSON.stringify(t));
+                return a;
+            },
+            update: (e, t) => {
+                const a = Pages.getAll();
+                const s = a.findIndex(item => item.id === e);
+                if (s !== -1) {
+                    a[s] = { ...a[s], ...t, lastModified: (new Date).toLocaleString() };
+                    localStorage.setItem(DB_KEY, JSON.stringify(a));
+                    return true;
+                }
+                return false;
+            },
+            trash: e => {
+                const list = Pages.getAll();
+                const index = list.findIndex(item => item.id === e);
+                if (index !== -1) {
+                    list[index].status = 'Trash'; 
+                    localStorage.setItem(DB_KEY, JSON.stringify(list));
+                }
+            },
+            restore: e => {
+                const list = Pages.getAll();
+                const index = list.findIndex(item => item.id === e);
+                if (index !== -1) {
+                    list[index].status = 'Draft'; 
+                    localStorage.setItem(DB_KEY, JSON.stringify(list));
+                }
+            },
+            delete: e => {
+                const t = Pages.getAll();
+                const a = t.filter(item => item.id !== e);
+                localStorage.setItem(DB_KEY, JSON.stringify(a));
+            },
+            duplicate: e => {
+                const t = Pages.getById(e);
+                if (t) {
+                    const all = Pages.getAll();
+                    const copy = {
+                        ...t,
+                        id: "page_" + Date.now(),
+                        title: t.title + " (Copy)",
+                        status: "Draft",
+                        lastModified: (new Date).toLocaleString()
+                    };
+                    all.push(copy);
+                    localStorage.setItem(DB_KEY, JSON.stringify(all));
+                    return copy;
+                }
+                return null;
+            }
+        };
+        window.Pages = Pages;
+    </script>
+
+    <style>
+        /* --- WordPress-style Dashboard CSS --- */
+        :root {
+            --admin-bar-bg: #1d2327;
+            --sidebar-bg: #2c3338;
+            --sidebar-hover: #1d2327;
+            --sidebar-active: #0073aa;
+            --body-bg: #f0f0f1;
+            --text-main: #3c434a;
+            --border-color: #c3c4c7;
+            --accent: #2271b1;
+            --accent-hover: #135e96;
+            --danger: #d63638;
+            --btn-secondary: #f6f7f7;
+            --btn-border: #2271b1;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: var(--body-bg); color: var(--text-main); display: flex; height: 100vh; font-size: 13px; }
+
+        /* Sidebar */
+        .sidebar { width: 160px; background: var(--sidebar-bg); color: #fff; flex-shrink: 0; display: flex; flex-direction: column; }
+        .sidebar-item { display: flex; align-items: center; padding: 10px 12px; color: #f0f0f1; text-decoration: none; transition: 0.1s; cursor: pointer; }
+        .sidebar-item:hover { background: var(--sidebar-hover); color: #72aee6; }
+        .sidebar-item.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+        .sidebar-item i { width: 20px; margin-right: 8px; opacity: 0.8; }
+        .sidebar-sep { height: 10px; }
+
+        /* Main Content */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Admin Top Bar */
+        .admin-bar { height: 32px; background: var(--admin-bar-bg); display: flex; align-items: center; padding: 0 15px; color: #fff; justify-content: space-between; }
+        .admin-brand { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+        /* Page Content */
+        .wp-body { padding: 10px 20px 0 20px; overflow-y: auto; flex: 1; }
+        .wp-header { display: flex; align-items: center; margin-bottom: 15px; gap: 15px; }
+        .wp-heading { font-size: 23px; font-weight: 400; color: #1d2327; margin: 0; }
+        
+        /* Buttons */
+        .page-title-action {
+            display: inline-block; text-decoration: none; font-size: 13px; line-height: 2; padding: 0 10px; cursor: pointer; border: 1px solid var(--accent); border-radius: 3px;
+            color: var(--accent); background: #f6f7f7; vertical-align: top;
+        }
+        .page-title-action:hover { background: #f0f0f1; border-color: var(--accent-hover); color: var(--accent-hover); }
+
+        .button {
+            display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border: 1px solid var(--accent); border-radius: 3px; white-space: nowrap; box-sizing: border-box;
+        }
+        .button-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .button-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+        .button-secondary { background: #f6f7f7; color: var(--accent); border-color: var(--accent); }
+        .button-secondary:hover { background: #f0f0f1; border-color: var(--accent-hover); color: var(--accent-hover); }
+
+        /* Stats & Filters */
+        .stats-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #fff; border: 1px solid #c3c4c7; padding: 10px 15px; flex: 1; border-left: 4px solid var(--accent); box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
+        .stat-value { font-size: 18px; font-weight: 600; color: #1d2327; }
+        .stat-label { color: #646970; font-size: 12px; margin-top: 2px; }
+
+        .filter-links { margin-bottom: 15px; font-size: 13px; float: left; }
+        
+        /* Search Box */
+        .search-box { float: right; margin-bottom: 10px; }
+        .search-box input[type="search"] { padding: 0 8px; line-height: 2; min-height: 30px; border: 1px solid #8c8f94; border-radius: 3px; margin-right: 4px; }
+        
+        /* Bulk Actions */
+        .tablenav { clear: both; height: 30px; margin: 6px 0 4px; vertical-align: middle; }
+        .tablenav .actions { padding: 2px 8px 0 0; float: left; display: flex; gap: 5px; }
+        .tablenav select { font-size: 13px; line-height: 2; color: #2c3338; border-color: #8c8f94; border-radius: 3px; padding: 0 24px 0 8px; min-height: 30px; max-width: 25rem; -webkit-appearance: none; background: #fff url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%206l5%205%205-5%202%201-7%207-7-7%202-1z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E") no-repeat right 5px top 55%; background-size: 16px 16px; cursor: pointer; vertical-align: middle; }
+
+        /* WP Table */
+        .wp-list-table { width: 100%; border: 1px solid #c3c4c7; box-shadow: 0 1px 1px rgba(0,0,0,0.04); background: #fff; border-spacing: 0; clear: both; margin-top: 5px; }
+        .wp-list-table thead th, .wp-list-table tfoot th { text-align: left; padding: 8px 10px; font-weight: 400; color: #1d2327; border-bottom: 1px solid #c3c4c7; }
+        .wp-list-table tfoot th { border-top: 1px solid #c3c4c7; border-bottom: none; }
+        
+        .wp-list-table tbody td { padding: 8px 10px; color: #50575e; border-bottom: 1px solid #f0f0f1; vertical-align: top; }
+        .wp-list-table tbody tr:nth-child(odd) { background-color: #f6f7f7; }
+        .wp-list-table tbody tr:hover { background-color: #f0f0f1; }
+        
+        /* Row Actions */
+        .row-title { color: var(--accent); font-weight: 600; font-size: 14px; text-decoration: none; cursor: pointer; }
+        .row-title:hover { color: var(--accent-hover); }
+        
+        .row-actions { visibility: hidden; margin-top: 4px; font-size: 12px; }
+        .wp-list-table tr:hover .row-actions { visibility: visible; }
+        
+        .row-actions span { color: #ddd; margin: 0 2px; }
+        .action-link { color: var(--accent); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
+        .action-link:hover { color: var(--accent-hover); }
+        
+        .action-link.current { color: #000; font-weight: 600; cursor: default; }
+        .action-link.current:hover { color: #000; }
+        
+        .action-delete { color: #a00; }
+        .action-delete:hover { color: var(--danger); }
+
+        /* Quick Edit Row */
+        .inline-edit-row { background-color: #f9f9f9; display: none; }
+        .inline-edit-row.active { display: table-row; }
+        .inline-edit-wrapper { padding: 10px; border-bottom: 1px solid #ddd; overflow: hidden; font-size: 13px; }
+        
+        .inline-edit-col { float: left; width: 48%; margin-right: 2%; }
+        .inline-edit-col h4 { margin: 0 0 10px; text-transform: uppercase; font-size: 11px; color: #646970; }
+        
+        .inline-edit-group { margin-bottom: 8px; }
+        .inline-edit-group label { display: block; margin-bottom: 4px; color: #1d2327; font-weight: 500; }
+        .inline-edit-group input[type="text"], 
+        .inline-edit-group select { width: 100%; max-width: 300px; height: 28px; padding: 0 8px; border: 1px solid #8c8f94; border-radius: 3px; }
+        
+        .inline-edit-buttons { margin-top: 15px; clear: both; display: flex; gap: 10px; }
+
+        /* Badges */
+        .status-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+        .status-published { background: #d6fde7; color: #005a2b; }
+        .status-draft { background: #f0f0f1; color: #646970; }
+        .status-pending { background: #fcf1cf; color: #9c6f1d; }
+        .status-trash { background: #fbeaea; color: #d63638; }
+
+        .empty-state { padding: 40px; text-align: center; color: #646970; }
+    </style>
 </head>
 <body>
 
-    <!-- Sidebar Module -->
-    <aside class="sidebar" id="sidebar">
-        <div class="logo-area">
-            <i class="fas fa-layer-group logo-icon"></i>
-            <span class="logo-text">BuilderPro</span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-item" style="padding: 15px 12px; font-weight: 600; background: #1d2327;">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </div>
+        <div class="sidebar-sep"></div>
+        <div class="sidebar-item active">
+            <i class="fas fa-file-alt"></i> Pages
+        </div>
+        <div class="sidebar-item"><i class="fas fa-photo-video"></i> Media</div>
+        <div class="sidebar-item"><i class="fas fa-paint-brush"></i> Appearance</div>
+        <div class="sidebar-item"><i class="fas fa-plug"></i> Plugins</div>
+        <div class="sidebar-item"><i class="fas fa-users"></i> Users</div>
+        <div class="sidebar-item"><i class="fas fa-cog"></i> Settings</div>
+    </div>
+
+    <!-- Main -->
+    <div class="main-content">
+        <!-- Admin Bar -->
+        <div class="admin-bar">
+            <div class="admin-brand"><i class="fab fa-wordpress"></i> My Site</div>
+            <div>Howdy, User <img src="https://via.placeholder.com/16" style="border-radius: 50%; vertical-align: text-top; margin-left: 5px;"></div>
         </div>
 
-        <ul class="nav-links">
-            <li class="nav-item">
-                <a href="#" class="active" onclick="handleNav('dashboard')">
-                    <i class="fas fa-chart-pie"></i> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" onclick="handleNav('pages')">
-                    <i class="fas fa-file-alt"></i> My Pages
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" onclick="handleNav('templates')">
-                    <i class="fas fa-th-large"></i> Templates
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" onclick="handleNav('plugins')">
-                    <i class="fas fa-plug"></i> Plugins
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="#" onclick="handleNav('settings')">
-                    <i class="fas fa-cog"></i> Settings
-                </a>
-            </li>
-        </ul>
-
-        <div class="account-section">
-            <div class="avatar">JS</div>
-            <div class="user-info">
-                <span class="user-name">John Smith</span>
-                <span class="user-role">Administrator</span>
-            </div>
-            <div class="logout-btn" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </div>
-        </div>
-    </aside>
-
-    <!-- Main Content Module -->
-    <main class="main-content">
-        <header class="top-bar">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="mobile-toggle" id="menuToggle">
-                    <i class="fas fa-bars"></i>
+        <!-- Body -->
+        <div class="wp-body">
+            <div class="wp-header">
+                <h1 class="wp-heading">Pages</h1>
+                <button class="page-title-action" onclick="handleCreatePage()">Add New</button>
+                <div class="search-box">
+                    <input type="search" id="page-search-input" placeholder="Search pages..." onkeyup="handleSearch(this.value)">
+                    <button class="button button-secondary">Search Pages</button>
                 </div>
-                <h1 class="page-title">Dashboard</h1>
             </div>
+
+            <div class="filter-links">
+                <span onclick="setFilter('all')" class="action-link" id="filter-all">All (<span id="count-all">0</span>)</span> | 
+                <span onclick="setFilter('Published')" class="action-link" id="filter-published">Published (<span id="count-pub">0</span>)</span> | 
+                <span onclick="setFilter('Draft')" class="action-link" id="filter-draft">Drafts (<span id="count-draft">0</span>)</span> | 
+                <span onclick="setFilter('Trash')" class="action-link" id="filter-trash">Trash (<span id="count-trash">0</span>)</span>
+            </div>
+
+            <div class="tablenav top">
+                <div class="actions">
+                    <select id="bulk-action-selector">
+                        <option value="-1">Bulk actions</option>
+                        <option value="trash">Move to Trash</option>
+                    </select>
+                    <button class="button button-secondary" onclick="handleBulkAction()">Apply</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table class="wp-list-table" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"><input type="checkbox" onclick="toggleAllCheckboxes(this)"></th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="pages-table-body">
+                    <!-- JS Injected Rows -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th><input type="checkbox"></th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </tfoot>
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', initDashboard);
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function initDashboard() {
+            renderTable();
+            updateStats();
+        }
+
+        // --- Core Render Logic ---
+        function renderTable() {
+            const allPages = Pages.getAll();
+            let pages = [];
+
+            // 1. Filter by Status
+            if (currentFilter === 'all') {
+                pages = allPages.filter(p => p.status !== 'Trash');
+            } else {
+                pages = allPages.filter(p => p.status === currentFilter);
+            }
+
+            // 2. Filter by Search
+            if (searchQuery) {
+                pages = pages.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
+            }
+
+            const tbody = document.getElementById('pages-table-body');
+            tbody.innerHTML = '';
+
+            if (pages.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No pages found.</td></tr>`;
+                return;
+            }
+
+            pages.forEach(page => {
+                // Determine Status Badge Class
+                let statusClass = 'status-draft';
+                if (page.status === 'Published') statusClass = 'status-published';
+                if (page.status === 'Pending') statusClass = 'status-pending';
+                if (page.status === 'Trash') statusClass = 'status-trash';
+
+                // Determine Actions
+                let actionsHTML = '';
+                if (page.status === 'Trash') {
+                    actionsHTML = `
+                        <button class="action-link" onclick="restorePage('${page.id}')">Restore</button> | 
+                        <button class="action-link action-delete" onclick="deletePermanently('${page.id}')">Delete Permanently</button>
+                    `;
+                } else {
+                    actionsHTML = `
+                        <button class="action-link" onclick="openEditor('${page.id}')">Edit</button> | 
+                        <button class="action-link" onclick="toggleQuickEdit('${page.id}')">Quick&nbsp;Edit</button> | 
+                        <button class="action-link action-delete" onclick="moveToTrash('${page.id}')">Trash</button> | 
+                        <button class="action-link" onclick="viewPage('${page.id}')">View</button>
+                    `;
+                }
+
+                // Main Row
+                const tr = document.createElement('tr');
+                tr.id = `post-${page.id}`;
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="bulk-check" value="${page.id}"></td>
+                    <td>
+                        <div class="row-title" onclick="${page.status !== 'Trash' ? `openEditor('${page.id}')` : ''}">${page.title}</div>
+                        <div class="row-actions">${actionsHTML}</div>
+                    </td>
+                    <td>${page.author || 'Admin'}</td>
+                    <td><span class="status-badge ${statusClass}">${page.status}</span></td>
+                    <td>
+                        ${page.status === 'Published' ? 'Published' : 'Last Modified'}<br>
+                        <span style="color: #646970; font-size: 12px;">${page.lastModified}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Quick Edit Row (Hidden by default)
+                if (page.status !== 'Trash') {
+                    const qeTr = document.createElement('tr');
+                    qeTr.id = `quick-edit-${page.id}`;
+                    qeTr.className = 'inline-edit-row';
+                    qeTr.innerHTML = `
+                        <td colspan="5" class="colspanchange">
+                            <div class="inline-edit-wrapper">
+                                <h4>Quick Edit</h4>
+                                <div class="inline-edit-col">
+                                    <div class="inline-edit-group">
+                                        <label>Title</label>
+                                        <input type="text" id="qe-title-${page.id}" value="${page.title}">
+                                    </div>
+                                    <div class="inline-edit-group">
+                                        <label>Slug</label>
+                                        <input type="text" value="${page.title.toLowerCase().replace(/ /g, '-')}" disabled style="background:#eee;">
+                                    </div>
+                                </div>
+                                <div class="inline-edit-col">
+                                    <div class="inline-edit-group">
+                                        <label>Status</label>
+                                        <select id="qe-status-${page.id}">
+                                            <option value="Published" ${page.status==='Published'?'selected':''}>Published</option>
+                                            <option value="Pending" ${page.status==='Pending'?'selected':''}>Pending Review</option>
+                                            <option value="Draft" ${page.status==='Draft'?'selected':''}>Draft</option>
+                                        </select>
+                                    </div>
+                                    <div class="inline-edit-group">
+                                        <label>Date</label>
+                                        <input type="text" value="${page.lastModified}" disabled>
+                                    </div>
+                                </div>
+                                <div class="inline-edit-buttons">
+                                    <button class="button button-primary" onclick="saveQuickEdit('${page.id}')">Update</button>
+                                    <button class="button button-secondary" onclick="toggleQuickEdit('${page.id}')">Cancel</button>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(qeTr);
+                }
+            });
+        }
+
+        // --- Actions ---
+
+        function handleSearch(val) {
+            searchQuery = val.trim();
+            renderTable();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            renderTable();
+            // Update Active Link UI
+            document.querySelectorAll('.filter-links .action-link').forEach(el => el.classList.remove('current'));
+            const id = filter === 'all' ? 'filter-all' : 'filter-' + filter.toLowerCase();
+            if(document.getElementById(id)) document.getElementById(id).classList.add('current');
+        }
+
+        function handleCreatePage() {
+            const newPage = Pages.create("Untitled Page");
+            window.location.href = `builder.html?page=${newPage.id}&mode=new`;
+        }
+
+        function openEditor(id) {
+            window.location.href = `builder.html?page=${id}`;
+        }
+        
+        function viewPage(id) {
+            // Simulate viewing
+            window.location.href = `builder.html?page=${id}&mode=preview`;
+        }
+
+        function toggleQuickEdit(id) {
+            const row = document.getElementById(`quick-edit-${id}`);
+            const mainRow = document.getElementById(`post-${id}`);
+            if (row.classList.contains('active')) {
+                row.classList.remove('active');
+                mainRow.style.backgroundColor = '';
+            } else {
+                // Close others
+                document.querySelectorAll('.inline-edit-row').forEach(el => el.classList.remove('active'));
+                row.classList.add('active');
+            }
+        }
+
+        function saveQuickEdit(id) {
+            const newTitle = document.getElementById(`qe-title-${id}`).value;
+            const newStatus = document.getElementById(`qe-status-${id}`).value;
             
-            <!-- Link to Builder Module -->
-            <button class="btn-primary" id="createNewBtn">
-                <i class="fas fa-plus"></i> Create New Page
-            </button>
-        </header>
+            Pages.update(id, { title: newTitle, status: newStatus });
+            renderTable();
+            updateStats();
+        }
 
-        <div class="dashboard-grid">
-            <!-- Stats Module -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-file-invoice"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Total Pages</h3>
-                        <p id="stat-total-pages">--</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Last Edited</h3>
-                        <p style="font-size: 1rem; margin-top: 4px;" id="stat-last-edited">--</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-eye"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Total Views</h3>
-                        <p>12.5K</p>
-                    </div>
-                </div>
-            </div>
+        function moveToTrash(id) {
+            Pages.trash(id);
+            updateStats();
+            renderTable();
+        }
 
-            <!-- Recent Pages Module -->
-            <div class="recent-pages-section">
-                <div class="section-header">
-                    <h2 class="section-title">Recent Pages</h2>
-                    <a href="#" style="color: var(--accent-color); text-decoration: none; font-size: 0.9rem;">View All</a>
-                </div>
+        function restorePage(id) {
+            Pages.restore(id);
+            updateStats();
+            renderTable();
+        }
 
-                <div class="pages-list">
-                    <table class="pages-table">
-                        <thead>
-                            <tr>
-                                <th>Page Name</th>
-                                <th>Status</th>
-                                <th>Last Modified</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pages-table-body">
-                            <!-- Pages injected via JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
+        function deletePermanently(id) {
+            if (confirm("Delete permanently?")) {
+                Pages.delete(id);
+                updateStats();
+                renderTable();
+            }
+        }
 
-   
-    <script src="scripts/dashboard.js" defer></script>
+        // --- Bulk Actions ---
+        function toggleAllCheckboxes(source) {
+            const checkboxes = document.querySelectorAll('.bulk-check');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
+        function handleBulkAction() {
+            const action = document.getElementById('bulk-action-selector').value;
+            if (action === '-1') return;
+
+            const checked = document.querySelectorAll('.bulk-check:checked');
+            if (checked.length === 0) {
+                alert("Please select items to apply bulk action.");
+                return;
+            }
+
+            if (action === 'trash') {
+                checked.forEach(cb => Pages.trash(cb.value));
+            }
+
+            updateStats();
+            renderTable();
+            // Reset main checkbox
+            document.querySelector('thead input[type="checkbox"]').checked = false;
+        }
+
+        // --- Stats Helper ---
+        function updateStats() {
+            const pages = Pages.getAll();
+            const published = pages.filter(p => p.status === 'Published').length;
+            const draft = pages.filter(p => p.status === 'Draft' || p.status === 'Pending').length;
+            const trash = pages.filter(p => p.status === 'Trash').length;
+            const allActive = pages.length - trash;
+            
+            document.getElementById('count-all').textContent = allActive;
+            document.getElementById('count-pub').textContent = published;
+            document.getElementById('count-draft').textContent = draft;
+            document.getElementById('count-trash').textContent = trash;
+
+            if(currentFilter === 'all') document.getElementById('filter-all').classList.add('current');
+        }
+
+    </script>
 </body>
 </html>

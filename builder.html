@@ -4,96 +4,938 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SiteBuilder - Editor</title>
-    <!-- External Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-      <link rel="stylesheet" href="styles/builder.css">
+
+    <!-- INLINE STORAGE (Normally /scripts/pages.js) -->
+    <script>
+        const DB_KEY='sitebuilder_pages';const Pages={getAll:()=>{const e=localStorage.getItem("sitebuilder_pages");return e?JSON.parse(e):[]},getById:e=>{const t=Pages.getAll();return t.find((t=>t.id===e))||null},update:(e,t)=>{const a=Pages.getAll(),s=a.findIndex((t=>t.id===e));return-1!==s&&(a[s]={...a[s],...t,lastModified:(new Date).toLocaleString()},localStorage.setItem("sitebuilder_pages",JSON.stringify(a)),!0)}};window.Pages=Pages;
+    </script>
+
+    <style>
+        /* --- builder.css --- */
+        :root {
+            --sidebar-width: 300px;
+            --topbar-height: 50px;
+            --footer-height: 45px;
+            --bg-dark: #2d2d2d;
+            --bg-panel: #ffffff;
+            --bg-canvas: #eeeeee;
+            --accent: #9b59b6;
+            --accent-hover: #8e44ad;
+            --text-main: #333;
+            --border: #e0e0e0;
+            --save-btn-bg: #5db075;
+            --save-btn-disabled: #a0cfa0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #f1f1f1; }
+
+        /* --- Top Bar --- */
+        #top-bar {
+            height: var(--topbar-height); background: #ffffff; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .toolbar-group { display: flex; gap: 12px; align-items: center; }
+        .btn-tool {
+            background: transparent; border: 1px solid transparent; padding: 6px 10px; cursor: pointer; border-radius: 3px; color: #555; font-size: 14px; transition: 0.2s;
+        }
+        .btn-tool:hover { background: #f0f0f0; color: #000; }
+        .btn-tool.active { background: #f0f0f0; color: var(--accent); }
+        
+        .btn-save { 
+            background: var(--save-btn-disabled); color: white; font-weight: 500; padding: 8px 16px; pointer-events: none; opacity: 0.7; transition: all 0.3s;
+        }
+        .btn-save.has-changes {
+            background: var(--save-btn-bg); pointer-events: auto; opacity: 1; cursor: pointer;
+        }
+        .btn-save.has-changes:hover { background: #4cae68; }
+        
+        /* --- Layout --- */
+        #workspace { display: flex; flex: 1; height: calc(100vh - var(--topbar-height)); position: relative; }
+
+        /* --- Unified Sidebar --- */
+        #main-sidebar {
+            width: var(--sidebar-width); background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 30; box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            transition: width 0.3s ease, transform 0.3s ease; position: relative;
+        }
+        #main-sidebar.collapsed { width: 0; overflow: hidden; border: none; }
+        
+        /* Collapse Handle */
+        .sidebar-toggle {
+            position: absolute; top: 50%; left: var(--sidebar-width); width: 20px; height: 40px; background: #fff;
+            border: 1px solid #ddd; border-left: none; border-radius: 0 5px 5px 0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; color: #555; z-index: 25;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: left 0.3s ease;
+        }
+        /* When sidebar is collapsed, button moves to left 0 */
+        #main-sidebar.collapsed + .sidebar-toggle { left: 0; z-index: 40; }
+
+        .sidebar-header {
+            height: 50px; border-bottom: 1px solid #eee; display: flex; align-items: center; padding: 0 15px; background: #fff; justify-content: space-between; flex-shrink: 0;
+        }
+        .panel-title { font-weight: 700; font-size: 13px; text-transform: uppercase; color: #555; }
+        
+        /* Widget Search */
+        .widget-search-box { padding: 10px 15px; border-bottom: 1px solid #eee; background: #fcfcfc; }
+        .widget-search-box input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; }
+
+        .sidebar-content { flex: 1; overflow-y: auto; position: relative; }
+
+        /* Widget Grid View */
+        #widget-grid { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .widget-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #fff; border: 1px solid #eee; border-radius: 3px; padding: 15px 10px;
+            cursor: grab; transition: all 0.2s; height: 90px;
+        }
+        .widget-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform: translateY(-2px); color: var(--accent); }
+        .widget-card i { font-size: 24px; margin-bottom: 8px; color: #888; }
+        .widget-card:hover i { color: var(--accent); }
+        .widget-card span { font-size: 12px; font-weight: 500; color: #555; }
+
+        /* Settings View */
+        #settings-view, #page-settings-view { display: none; flex-direction: column; height: 100%; }
+        #settings-view.active, #page-settings-view.active { display: flex; }
+
+        .settings-tabs { display: flex; border-bottom: 1px solid #ddd; background: #fff; flex-shrink: 0; }
+        .tab-btn { flex: 1; padding: 14px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #555; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .settings-scroll { flex: 1; overflow-y: auto; padding: 0; }
+
+        /* Sidebar Footer */
+        .sidebar-footer {
+            height: var(--footer-height); border-top: 1px solid #eee; background: #fff; display: flex; align-items: center; justify-content: space-around; flex-shrink: 0;
+        }
+        .footer-icon { color: #555; font-size: 16px; cursor: pointer; padding: 8px; border-radius: 3px; transition: 0.2s; }
+        .footer-icon:hover { background: #f0f0f0; color: #000; }
+        .footer-icon.active { color: var(--accent); }
+
+        /* Accordions */
+        .accordion-item { border-bottom: 1px solid #f1f1f1; }
+        .accordion-header { padding: 15px 20px; cursor: pointer; background: #fff; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; color: #444; }
+        .accordion-header:hover { background: #fafafa; }
+        .accordion-body { padding: 15px 20px; display: none; background: #fff; }
+        .accordion-item.active .accordion-body { display: block; }
+        
+        /* Controls */
+        .control-group { margin-bottom: 15px; }
+        .control-label { display: block; font-size: 12px; color: #777; margin-bottom: 6px; font-weight: 500; }
+        .control-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; color: #333; }
+        .control-input:focus { border-color: var(--accent); outline: none; }
+        
+        /* --- Canvas --- */
+        #canvas-wrapper { flex: 1; background: var(--bg-canvas); display: flex; justify-content: center; padding: 40px; overflow-y: auto; position: relative; transition: padding 0.3s ease; }
+        #canvas {
+            background: white; min-height: 85vh; width: 100%; max-width: 1140px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: width 0.3s ease; position: relative; padding-bottom: 50px;
+        }
+        #canvas.tablet { width: 768px; }
+        #canvas.mobile { width: 360px; }
+
+        /* Drop Zones & Placeholders */
+        .drop-zone-active { outline: 2px dashed var(--accent); outline-offset: -2px; background: rgba(155, 89, 182, 0.05); }
+        .drop-placeholder {
+            height: 4px; background: var(--accent); margin: 5px 0; border-radius: 2px; position: relative;
+        }
+
+        /* Elements on Canvas */
+        .builder-element { position: relative; border: 1px solid transparent; min-height: 20px; transition: opacity 0.2s; }
+        .builder-element:hover { border: 1px dashed var(--accent); }
+        .builder-element.selected { border: 1px solid var(--accent); z-index: 5; }
+        
+        /* Element Handles */
+        .element-handle {
+            position: absolute; top: -20px; left: -1px; background: var(--accent); color: white;
+            padding: 2px 10px; font-size: 11px; border-radius: 3px 3px 0 0; display: none; cursor: grab; z-index: 10;
+        }
+        .element-actions {
+            position: absolute; top: -20px; right: -1px; background: var(--accent); color: white;
+            display: none; border-radius: 3px 3px 0 0; z-index: 10;
+        }
+        .builder-element:hover .element-handle, .builder-element.selected .element-handle,
+        .builder-element:hover .element-actions, .builder-element.selected .element-actions { display: flex; }
+        
+        .action-btn { padding: 4px 8px; cursor: pointer; font-size: 11px; border-left: 1px solid rgba(255,255,255,0.2); }
+        .action-btn:hover { background: rgba(0,0,0,0.1); }
+        .action-btn.delete:hover { background: #d32f2f; }
+
+        /* Structure Panel (Navigator) */
+        #structure-panel {
+            position: fixed; right: 20px; bottom: 80px; width: 250px; height: 350px; background: #fff;
+            border-radius: 5px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); display: none; flex-direction: column; z-index: 100;
+            border: 1px solid #ddd;
+        }
+        .struct-header {
+            padding: 10px 15px; background: #f9f9f9; border-bottom: 1px solid #eee; font-size: 12px; font-weight: 700;
+            display: flex; justify-content: space-between; align-items: center; cursor: move; color: #555;
+        }
+        .struct-body { flex: 1; overflow-y: auto; padding: 5px 0; }
+        .struct-item {
+            padding: 8px 15px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f9f9f9;
+        }
+        .struct-item:hover { background: #f5f5f5; }
+        .struct-item.active { background: #f0f0f0; color: var(--accent); font-weight: 600; border-left: 3px solid var(--accent); }
+        .struct-icon { width: 16px; text-align: center; color: #999; }
+
+        /* Dragging Ghost */
+        .gu-mirror { position: fixed !important; margin: 0 !important; z-index: 9999 !important; opacity: 0.8; }
+        .dragging { opacity: 0.5; }
+
+        /* Context Menu */
+        #context-menu {
+            position: fixed; background: #fff; border: 1px solid #ccc; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            width: 180px; display: none; z-index: 1000; border-radius: 4px; padding: 5px 0;
+        }
+        .ctx-item { padding: 8px 15px; font-size: 13px; color: #333; cursor: pointer; display: flex; justify-content: space-between; }
+        .ctx-item:hover { background: #f5f5f5; color: var(--accent); }
+        .ctx-shortcut { font-size: 11px; opacity: 0.6; }
+        .ctx-sep { height: 1px; background: #eee; margin: 4px 0; }
+    </style>
 </head>
 <body>
 
-    <!-- 
-      ========================================
-      FILE: builder.html (Markup)
-      ======================================== 
-    -->
-    
-    <!-- Top Toolbar -->
+    <!-- Top Bar -->
     <header id="top-bar">
         <div class="toolbar-group">
-            <button class="btn-tool" title="Back to Dashboard" onclick="window.history.back()">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <div style="width: 1px; background: #ddd; height: 20px; margin: 0 10px;"></div>
-            <button class="btn-tool" id="btn-undo"><i class="fas fa-undo"></i></button>
-            <button class="btn-tool" id="btn-redo"><i class="fas fa-redo"></i></button>
+            <button class="btn-tool" onclick="window.location.href='dashboard.html'"><i class="fas fa-bars"></i></button>
+            <div style="font-weight: 700; font-size: 16px; color: #333;">Elementor Lite</div>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="btn-tool active" onclick="setMode('desktop', this)"><i class="fas fa-desktop"></i></button>
+            <button class="btn-tool" onclick="setMode('tablet', this)"><i class="fas fa-tablet-alt"></i></button>
+            <button class="btn-tool" onclick="setMode('mobile', this)"><i class="fas fa-mobile-alt"></i></button>
         </div>
 
         <div class="toolbar-group">
-            <button class="btn-tool active" onclick="setResponsiveMode('desktop', this)">
-                <i class="fas fa-desktop"></i>
-            </button>
-            <button class="btn-tool" onclick="setResponsiveMode('tablet', this)">
-                <i class="fas fa-tablet-alt"></i>
-            </button>
-            <button class="btn-tool" onclick="setResponsiveMode('mobile', this)">
-                <i class="fas fa-mobile-alt"></i>
-            </button>
-        </div>
-
-        <div class="toolbar-group">
-            <button class="btn-tool" id="btn-preview">Preview</button>
-            <button class="btn-primary" id="btn-save">Save</button>
-            <button class="btn-tool" id="btn-export" style="color: var(--accent); border: 1px solid var(--accent);">Export</button>
+            <button class="btn-tool" onclick="undo()" title="Undo"><i class="fas fa-undo"></i></button>
+            <button class="btn-tool" onclick="redo()" title="Redo"><i class="fas fa-redo"></i></button>
+            <div style="width:1px; height:20px; background:#ddd;"></div>
+            <!-- Update Button: Only active when has-changes class is added -->
+            <button class="btn-save" id="btn-save" onclick="savePage()">UPDATE</button>
+            <button class="btn-tool" onclick="exportPage()" title="Export HTML"><i class="fas fa-download"></i></button>
+            <button class="btn-tool" onclick="previewPage()" title="Preview"><i class="fas fa-eye"></i></button>
         </div>
     </header>
 
-    <!-- Main Workspace -->
+    <!-- Workspace -->
     <div id="workspace">
         
-        <!-- Left Panel: Widgets -->
-        <aside id="widget-panel">
-            <div class="panel-header">Elements</div>
-            <div class="widget-list" id="widget-list">
-                <!-- Widgets injected via JS -->
-            </div>
+        <!-- Unified Sidebar -->
+        <aside id="main-sidebar">
             
-            <!-- Plugin Hook Placeholder -->
-            <div id="plugin-widgets-area" style="padding: 10px; border-top: 1px solid #eee;">
-                <!-- Plugins can render here -->
+            <!-- Widget Library View -->
+            <div id="widget-view" class="sidebar-content">
+                <div class="sidebar-header">
+                    <span class="panel-title">Elements</span>
+                    <i class="fas fa-th" style="color:#aaa;"></i>
+                </div>
+                <div class="widget-search-box">
+                    <input type="search" placeholder="Search Widget..." onkeyup="filterWidgets(this.value)">
+                </div>
+                <div id="widget-grid">
+                    <!-- Widgets injected here -->
+                </div>
             </div>
+
+            <!-- Settings View -->
+            <div id="settings-view">
+                <div class="sidebar-header" style="background: #f9f9f9;">
+                    <span class="panel-title" id="settings-title">Edit Heading</span>
+                    <button class="btn-tool" onclick="showWidgetLibrary()"><i class="fas fa-th"></i></button>
+                </div>
+                <div class="settings-tabs">
+                    <button class="tab-btn active" onclick="switchTab('content')">Content</button>
+                    <button class="tab-btn" onclick="switchTab('style')">Style</button>
+                    <button class="tab-btn" onclick="switchTab('advanced')">Advanced</button>
+                </div>
+                <div id="settings-body" class="settings-scroll"></div>
+            </div>
+
+            <!-- Page Settings View -->
+            <div id="page-settings-view">
+                <div class="sidebar-header" style="background: #f9f9f9;">
+                    <span class="panel-title">Page Settings</span>
+                    <button class="btn-tool" onclick="showWidgetLibrary()"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="page-settings-body" class="settings-scroll" style="padding: 15px;">
+                    <!-- Controls -->
+                </div>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <div class="footer-icon" onclick="showPageSettings()" title="Settings"><i class="fas fa-cog"></i></div>
+                <div class="footer-icon" onclick="toggleStructure()" title="Navigator"><i class="fas fa-layer-group"></i></div>
+                <div class="footer-icon" title="History"><i class="fas fa-history"></i></div>
+                <div class="footer-icon" title="Responsive Mode"><i class="fas fa-mobile-alt"></i></div>
+                <div class="footer-icon" title="Preview Changes"><i class="fas fa-eye"></i></div>
+            </div>
+
         </aside>
 
-        <!-- Center: Canvas -->
-        <main id="canvas-wrapper">
-            <div id="canvas">
-                <!-- Elements will be dropped here -->
-                <div class="empty-canvas-msg">
-                    <i class="fas fa-plus-circle" style="font-size: 32px; margin-bottom: 10px;"></i><br>
-                    Select an element from the left to add it.
-                </div>
+        <!-- Sidebar Toggle (Moved after sidebar for better positioning logic) -->
+        <div class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-left" id="toggle-icon"></i>
+        </div>
+
+        <!-- Canvas -->
+        <main id="canvas-wrapper" onclick="deselectAll()">
+            <div id="canvas" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                <!-- Elements dropped here -->
             </div>
         </main>
 
-        <!-- Right Panel: Settings -->
-        <aside id="settings-panel">
-            <div class="settings-tabs">
-                <button class="tab-btn active" onclick="switchTab('content')">Content</button>
-                <button class="tab-btn" onclick="switchTab('style')">Style</button>
-                <button class="tab-btn" onclick="switchTab('advanced')">Advanced</button>
+        <!-- Structure Panel (Navigator) -->
+        <div id="structure-panel">
+            <div class="struct-header" id="struct-header">
+                <span>Structure</span>
+                <span onclick="toggleStructure()" style="cursor:pointer;"><i class="fas fa-times"></i></span>
             </div>
-            <div id="settings-content">
-                <p style="color: #999; text-align: center; margin-top: 20px;">Select an element to edit settings.</p>
+            <div class="struct-body" id="struct-list">
+                <!-- Tree items injected here -->
             </div>
-        </aside>
+        </div>
 
     </div>
 
-    <!-- 
-      ========================================
-      FILE: /scripts/builder.js
-      ======================================== 
-    -->
-    <script src="scripts/builder.js" defer></script>
+    <!-- Context Menu -->
+    <div id="context-menu">
+        <div class="ctx-item" onclick="handleAction('copy')"><span>Copy</span> <span class="ctx-shortcut">Ctrl+C</span></div>
+        <div class="ctx-item" onclick="handleAction('paste')"><span>Paste</span> <span class="ctx-shortcut">Ctrl+V</span></div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" onclick="handleAction('duplicate')"><span>Duplicate</span> <span class="ctx-shortcut">Ctrl+D</span></div>
+        <div class="ctx-item" onclick="handleAction('delete')"><span>Delete</span> <span class="ctx-shortcut">Del</span></div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        /**
+         * PLUGIN SYSTEM & API
+         * This allows adding new features without modifying core code.
+         */
+        window.SiteBuilder = {
+            widgets: {},
+            registerWidget: function(id, definition) {
+                this.widgets[id] = definition;
+                // Re-render library if needed
+                if(typeof renderWidgetList === 'function') renderWidgetList(Object.keys(this.widgets));
+            },
+            getWidget: function(id) {
+                return this.widgets[id];
+            },
+            getAllWidgets: function() {
+                return Object.keys(this.widgets);
+            }
+        };
+
+        /**
+         * BUILDER CORE
+         */
+        const AppState = {
+            pageId: null,
+            widgets: [],
+            pageSettings: { title: '', status: 'Draft', bg_color: '#ffffff', custom_css: '' },
+            selectedId: null,
+            clipboard: null,
+            history: [],
+            historyIndex: -1,
+            maxHistory: 20,
+            draggedType: null, 
+            draggedId: null,
+            hasUnsavedChanges: false
+        };
+
+        // --- Core Widget Definitions (Now registered via API) ---
+        SiteBuilder.registerWidget('heading', {
+            name: 'Heading', icon: 'fa-heading',
+            default: { text: 'Add Your Heading Text Here', tag: 'h2', align: 'left', color: '#333333' },
+            render: (d) => `<${d.tag} style="text-align:${d.align}; color:${d.color}; margin:0;">${d.text}</${d.tag}>`,
+            editable: true,
+            controls: {
+                content: [
+                    { label: 'Title', key: 'text', type: 'text' },
+                    { label: 'HTML Tag', key: 'tag', type: 'select', options: ['h1','h2','h3','h4','h5','div'] },
+                    { label: 'Alignment', key: 'align', type: 'select', options: ['left','center','right','justify'] }
+                ],
+                style: [ { label: 'Text Color', key: 'color', type: 'color' } ]
+            }
+        });
+
+        SiteBuilder.registerWidget('text', {
+            name: 'Text Editor', icon: 'fa-align-left',
+            default: { text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', color: '#666666', size: '15', lineHeight: '1.6' },
+            render: (d) => `<div style="color:${d.color}; font-size:${d.size}px; line-height:${d.lineHeight};">${d.text}</div>`,
+            editable: true,
+            controls: {
+                content: [ { label: 'Content', key: 'text', type: 'textarea' } ],
+                style: [
+                    { label: 'Text Color', key: 'color', type: 'color' },
+                    { label: 'Typography Size', key: 'size', type: 'range', min:10, max:100 },
+                    { label: 'Line Height', key: 'lineHeight', type: 'range', min:1, max:3, step:0.1 }
+                ]
+            }
+        });
+
+        SiteBuilder.registerWidget('button', {
+            name: 'Button', icon: 'fa-mouse-pointer',
+            default: { text: 'Click Here', link: '#', align: 'left', bg: '#61ce70', color: '#ffffff', radius: '3', padding: '12' },
+            render: (d) => `<div style="text-align:${d.align}"><a href="${d.link}" style="display:inline-block; padding:${d.padding}px 24px; background:${d.bg}; color:${d.color}; border-radius:${d.radius}px; text-decoration:none; font-weight:600;">${d.text}</a></div>`,
+            controls: {
+                content: [
+                    { label: 'Text', key: 'text', type: 'text' },
+                    { label: 'Link', key: 'link', type: 'text' },
+                    { label: 'Alignment', key: 'align', type: 'select', options:['left','center','right','justify'] }
+                ],
+                style: [
+                    { label: 'Background Color', key: 'bg', type: 'color' },
+                    { label: 'Text Color', key: 'color', type: 'color' },
+                    { label: 'Border Radius', key: 'radius', type: 'range', min:0, max:50 },
+                    { label: 'Padding', key: 'padding', type: 'range', min:5, max:50 }
+                ]
+            }
+        });
+
+        SiteBuilder.registerWidget('image', {
+            name: 'Image', icon: 'fa-image',
+            default: { src: 'https://via.placeholder.com/800x400', width: '100', align: 'center', radius: '0' },
+            render: (d) => `<div style="text-align:${d.align}"><img src="${d.src}" style="max-width:${d.width}%; height:auto; border-radius:${d.radius}px;"></div>`,
+            controls: {
+                content: [ { label: 'Image URL', key: 'src', type: 'text' } ],
+                style: [
+                    { label: 'Width (%)', key: 'width', type: 'range', min:5, max:100 },
+                    { label: 'Border Radius', key: 'radius', type: 'range', min:0, max:100 },
+                    { label: 'Alignment', key: 'align', type: 'select', options:['left','center','right'] }
+                ]
+            }
+        });
+
+        SiteBuilder.registerWidget('divider', {
+            name: 'Divider', icon: 'fa-minus',
+            default: { color: '#ddd', height: '1', gap: '20' },
+            render: (d) => `<div style="padding:${d.gap}px 0;"><div style="height:${d.height}px; background:${d.color}; width:100%;"></div></div>`,
+            controls: {
+                style: [
+                    { label: 'Color', key: 'color', type: 'color' },
+                    { label: 'Weight', key: 'height', type: 'range', min:1, max:10 },
+                    { label: 'Gap', key: 'gap', type: 'range', min:0, max:50 }
+                ]
+            }
+        });
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            AppState.pageId = params.get('page');
+            
+            initSidebar();
+            
+            if (AppState.pageId) {
+                const pageData = Pages.getById(AppState.pageId);
+                if (pageData) {
+                    AppState.widgets = pageData.widgets || [];
+                    if(pageData.settings) AppState.pageSettings = { ...AppState.pageSettings, ...pageData.settings };
+                    
+                    document.title = `Editor - ${pageData.title}`;
+                    renderCanvas();
+                    pushHistory("Initial Load");
+                    // Reset change flag after initial load
+                    markChanges(false);
+                }
+            }
+            
+            // Drag Structure Panel
+            dragElement(document.getElementById("structure-panel"));
+
+            document.addEventListener('keydown', handleShortcuts);
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#context-menu')) document.getElementById('context-menu').style.display = 'none';
+            });
+        });
+
+        function initSidebar() {
+            renderWidgetList(SiteBuilder.getAllWidgets());
+        }
+        
+        function renderWidgetList(keys) {
+            const grid = document.getElementById('widget-grid');
+            grid.innerHTML = '';
+            keys.forEach(key => {
+                const w = SiteBuilder.getWidget(key);
+                const card = document.createElement('div');
+                card.className = 'widget-card';
+                card.draggable = true;
+                card.innerHTML = `<i class="fas ${w.icon}"></i><span>${w.name}</span>`;
+                card.ondragstart = (e) => {
+                    AppState.draggedType = key;
+                    AppState.draggedId = null;
+                    e.dataTransfer.effectAllowed = 'copy';
+                };
+                card.onclick = () => addWidget(key);
+                grid.appendChild(card);
+            });
+        }
+        
+        function filterWidgets(query) {
+            const lower = query.toLowerCase();
+            const filtered = SiteBuilder.getAllWidgets().filter(k => 
+                SiteBuilder.getWidget(k).name.toLowerCase().includes(lower)
+            );
+            renderWidgetList(filtered);
+        }
+
+        // --- Change Management ---
+        function markChanges(hasChanges) {
+            AppState.hasUnsavedChanges = hasChanges;
+            const btn = document.getElementById('btn-save');
+            if(hasChanges) {
+                btn.classList.add('has-changes');
+                btn.innerText = 'UPDATE';
+            } else {
+                btn.classList.remove('has-changes');
+                // btn.innerText = 'SAVED'; // Optional feedback
+            }
+        }
+
+        // --- Core Widget Logic ---
+        function addWidget(type, index = null) {
+            const def = SiteBuilder.getWidget(type);
+            const newWidget = {
+                id: 'w_' + Date.now(),
+                type: type,
+                data: JSON.parse(JSON.stringify(def.default))
+            };
+
+            if (index !== null) {
+                if(index >= AppState.widgets.length) AppState.widgets.push(newWidget);
+                else AppState.widgets.splice(index, 0, newWidget);
+            } else {
+                AppState.widgets.push(newWidget);
+            }
+
+            renderCanvas();
+            selectWidget(newWidget.id);
+            pushHistory(`Added ${def.name}`);
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = '';
+            
+            // Apply Page Global Settings (BG Color, CSS)
+            canvas.style.backgroundColor = AppState.pageSettings.bg_color;
+            let styleTag = document.getElementById('custom-css');
+            if(!styleTag) { 
+                styleTag = document.createElement('style'); styleTag.id = 'custom-css'; document.head.appendChild(styleTag); 
+            }
+            styleTag.textContent = AppState.pageSettings.custom_css;
+
+            AppState.widgets.forEach(w => {
+                const def = SiteBuilder.getWidget(w.type);
+                const el = document.createElement('div');
+                el.className = `builder-element ${AppState.selectedId === w.id ? 'selected' : ''}`;
+                el.id = w.id;
+                el.draggable = true;
+                
+                const contentHTML = def.render(w.data);
+                
+                el.innerHTML = `
+                    <div class="element-handle" title="Drag to reorder"><i class="fas fa-arrows-alt"></i> ${def.name}</div>
+                    <div class="element-actions">
+                        <div class="action-btn" onclick="handleAction('duplicate', '${w.id}')" title="Duplicate"><i class="fas fa-copy"></i></div>
+                        <div class="action-btn delete" onclick="handleAction('delete', '${w.id}')" title="Delete"><i class="fas fa-times"></i></div>
+                    </div>
+                    <div class="element-content" ${def.editable ? 'contenteditable="true"' : ''}>${contentHTML}</div>
+                `;
+
+                if (def.editable) {
+                    const contentDiv = el.querySelector('.element-content');
+                    contentDiv.addEventListener('input', (e) => {
+                         if(w.data.text !== undefined) {
+                             w.data.text = contentDiv.innerText;
+                             // Mark changes without pushing history for every keystroke
+                             markChanges(true); 
+                         }
+                    });
+                    contentDiv.addEventListener('click', (e) => { e.stopPropagation(); selectWidget(w.id); });
+                }
+
+                el.ondragstart = (e) => {
+                    e.stopPropagation();
+                    AppState.draggedType = null;
+                    AppState.draggedId = w.id;
+                    el.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                };
+                el.ondragend = () => {
+                    el.classList.remove('dragging');
+                    document.querySelectorAll('.drop-placeholder').forEach(p => p.remove());
+                };
+                el.onclick = (e) => { e.stopPropagation(); selectWidget(w.id); };
+                el.oncontextmenu = (e) => showContextMenu(e, w.id);
+                
+                canvas.appendChild(el);
+            });
+            
+            renderStructureList();
+        }
+
+        // --- Drag & Drop ---
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            const exist = document.querySelector('.drop-placeholder');
+            if(exist) exist.remove();
+
+            const canvas = document.getElementById('canvas');
+            const afterElement = getDragAfterElement(canvas, e.clientY);
+            const placeholder = document.createElement('div');
+            placeholder.className = 'drop-placeholder';
+            
+            if (afterElement == null) canvas.appendChild(placeholder);
+            else canvas.insertBefore(placeholder, afterElement);
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const placeholder = document.querySelector('.drop-placeholder');
+            if(!placeholder) return;
+            const index = Array.from(placeholder.parentNode.children).indexOf(placeholder);
+            placeholder.remove(); 
+
+            if (AppState.draggedType) addWidget(AppState.draggedType, index);
+            else if (AppState.draggedId) moveWidget(AppState.draggedId, index);
+            
+            AppState.draggedType = null; AppState.draggedId = null;
+        }
+
+        function moveWidget(id, newIndex) {
+            const oldIndex = AppState.widgets.findIndex(w => w.id === id);
+            if (oldIndex < 0) return;
+            const [item] = AppState.widgets.splice(oldIndex, 1);
+            if (oldIndex < newIndex) newIndex--;
+            AppState.widgets.splice(newIndex, 0, item);
+            renderCanvas();
+            selectWidget(id);
+            pushHistory('Moved Widget');
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.builder-element:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+                else return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- Selection & Views ---
+        function selectWidget(id) {
+            AppState.selectedId = id;
+            document.querySelectorAll('.builder-element').forEach(el => el.classList.remove('selected'));
+            const activeEl = document.getElementById(id);
+            if(activeEl) activeEl.classList.add('selected');
+
+            document.getElementById('widget-view').style.display = 'none';
+            document.getElementById('page-settings-view').classList.remove('active');
+            document.getElementById('settings-view').classList.add('active');
+            
+            renderSettings(id);
+        }
+
+        function showWidgetLibrary() {
+            AppState.selectedId = null;
+            document.querySelectorAll('.builder-element').forEach(el => el.classList.remove('selected'));
+            document.getElementById('settings-view').classList.remove('active');
+            document.getElementById('page-settings-view').classList.remove('active');
+            document.getElementById('widget-view').style.display = 'block';
+        }
+        
+        function showPageSettings() {
+            AppState.selectedId = null;
+            document.querySelectorAll('.builder-element').forEach(el => el.classList.remove('selected'));
+            document.getElementById('widget-view').style.display = 'none';
+            document.getElementById('settings-view').classList.remove('active');
+            document.getElementById('page-settings-view').classList.add('active');
+            
+            renderPageSettings();
+        }
+
+        function deselectAll() { showWidgetLibrary(); }
+
+        // --- Sidebar Toggles ---
+        function toggleSidebar() {
+            const sb = document.getElementById('main-sidebar');
+            const icon = document.getElementById('toggle-icon');
+            sb.classList.toggle('collapsed');
+            
+            if (sb.classList.contains('collapsed')) {
+                icon.className = 'fas fa-chevron-right';
+            } else {
+                icon.className = 'fas fa-chevron-left';
+            }
+        }
+        
+        function toggleStructure() {
+            const p = document.getElementById('structure-panel');
+            p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        // --- Renderers ---
+        function renderSettings(id) {
+            const widget = AppState.widgets.find(w => w.id === id);
+            const def = SiteBuilder.getWidget(widget.type);
+            document.getElementById('settings-title').textContent = `Edit ${def.name}`;
+            window.currentWidgetDef = def;
+            window.currentWidget = widget;
+            switchTab('content'); 
+        }
+
+        function switchTab(tabName) {
+            if (!AppState.selectedId) return;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            const container = document.getElementById('settings-body');
+            container.innerHTML = '';
+            
+            const def = window.currentWidgetDef;
+            const data = window.currentWidget.data;
+            const fields = def.controls[tabName] || [];
+
+            if(fields.length === 0) {
+                container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">No settings available.</div>';
+                return;
+            }
+
+            const accItem = document.createElement('div');
+            accItem.className = 'accordion-item active';
+            accItem.innerHTML = `<div class="accordion-header"><span>General</span> <i class="fas fa-chevron-down"></i></div>`;
+            const accBody = document.createElement('div');
+            accBody.className = 'accordion-body';
+            
+            fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'control-group';
+                group.innerHTML = `<label class="control-label">${field.label}</label>`;
+                
+                let input;
+                if(field.type === 'select') {
+                    input = document.createElement('select'); input.className = 'control-input';
+                    field.options.forEach(opt => {
+                        const o = document.createElement('option'); o.value = opt; o.textContent = opt;
+                        if(data[field.key] === opt) o.selected = true;
+                        input.appendChild(o);
+                    });
+                } else if (field.type === 'textarea') {
+                    input = document.createElement('textarea'); input.className = 'control-input'; input.rows = 4; input.value = data[field.key];
+                } else if (field.type === 'range') {
+                    input = document.createElement('input'); input.type = 'range'; input.style.width = '100%'; 
+                    input.min = field.min; input.max = field.max; if(field.step) input.step = field.step; input.value = parseFloat(data[field.key]);
+                } else {
+                    input = document.createElement('input'); input.type = field.type; input.className = 'control-input';
+                    if(field.type === 'color') { input.style.height = '35px'; input.style.padding = '2px'; }
+                    input.value = data[field.key];
+                }
+
+                input.oninput = (e) => { data[field.key] = e.target.value; renderCanvas(); };
+                input.onchange = () => pushHistory(`Edit ${field.label}`);
+                group.appendChild(input); accBody.appendChild(group);
+            });
+            accItem.appendChild(accBody); container.appendChild(accItem);
+        }
+
+        function renderPageSettings() {
+            const container = document.getElementById('page-settings-body');
+            container.innerHTML = '';
+            
+            const fields = [
+                { label: 'Page Title', key: 'title', type: 'text' },
+                { label: 'Status', key: 'status', type: 'select', options: ['Draft','Published','Pending'] },
+                { label: 'Background Color', key: 'bg_color', type: 'color' },
+                { label: 'Custom CSS', key: 'custom_css', type: 'textarea' }
+            ];
+
+            fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'control-group';
+                group.innerHTML = `<label class="control-label">${field.label}</label>`;
+                
+                let input;
+                if(field.type === 'select') {
+                    input = document.createElement('select'); input.className = 'control-input';
+                    field.options.forEach(opt => {
+                        const o = document.createElement('option'); o.value = opt; o.textContent = opt;
+                        if(AppState.pageSettings[field.key] === opt) o.selected = true;
+                        input.appendChild(o);
+                    });
+                } else if(field.type === 'textarea') {
+                    input = document.createElement('textarea'); input.className = 'control-input'; input.rows=6;
+                    input.value = AppState.pageSettings[field.key];
+                } else {
+                    input = document.createElement('input'); input.type = field.type; input.className = 'control-input';
+                    if(field.type === 'color') { input.style.height = '35px'; input.style.padding='2px'; }
+                    input.value = AppState.pageSettings[field.key];
+                }
+                
+                input.oninput = (e) => { 
+                    AppState.pageSettings[field.key] = e.target.value; 
+                    renderCanvas();
+                    // mark changes only when input complete for some, but here on input for responsiveness
+                    // For save button optimization, maybe debounce
+                    markChanges(true); 
+                };
+                group.appendChild(input); container.appendChild(group);
+            });
+        }
+        
+        function renderStructureList() {
+            const list = document.getElementById('struct-list');
+            list.innerHTML = '';
+            AppState.widgets.forEach(w => {
+                const def = SiteBuilder.getWidget(w.type);
+                const item = document.createElement('div');
+                item.className = `struct-item ${AppState.selectedId === w.id ? 'active' : ''}`;
+                item.innerHTML = `<div class="struct-icon"><i class="fas ${def.icon}"></i></div> ${def.name}`;
+                item.onclick = () => selectWidget(w.id);
+                list.appendChild(item);
+            });
+        }
+
+        // --- Draggable Structure Panel ---
+        function dragElement(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const header = document.getElementById("struct-header");
+            if (header) header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                pos3 = e.clientX; pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null; document.onmousemove = null;
+            }
+        }
+
+        // --- Export ---
+        function exportPage() {
+            const htmlContent = document.getElementById('canvas').innerHTML;
+            const fullHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${AppState.pageSettings.title || 'Exported Page'}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { margin:0; font-family: 'Inter', sans-serif; background-color: ${AppState.pageSettings.bg_color}; }
+        /* Reset Builder Styles */
+        .builder-element { position: relative; }
+        .element-handle, .element-actions { display: none !important; }
+        .builder-element { border: none !important; }
+        .drop-placeholder { display: none; }
+        ${AppState.pageSettings.custom_css}
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+            
+            const blob = new Blob([fullHTML], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'page-export.html';
+            a.click();
+        }
+
+        // --- Misc ---
+        function showContextMenu(e, id) {
+            e.preventDefault(); selectWidget(id);
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
+        }
+
+        function handleAction(action, id = null) {
+            document.getElementById('context-menu').style.display = 'none';
+            const targetId = id || AppState.selectedId; if (!targetId) return;
+            const wIndex = AppState.widgets.findIndex(w => w.id === targetId);
+            const widget = AppState.widgets[wIndex];
+
+            if(action === 'copy') AppState.clipboard = JSON.parse(JSON.stringify(widget));
+            if(action === 'paste' && AppState.clipboard) {
+                const newW = JSON.parse(JSON.stringify(AppState.clipboard)); newW.id = 'w_' + Date.now();
+                AppState.widgets.splice(wIndex + 1, 0, newW); renderCanvas(); pushHistory('Paste');
+            }
+            if(action === 'duplicate') {
+                const dup = JSON.parse(JSON.stringify(widget)); dup.id = 'w_' + Date.now();
+                AppState.widgets.splice(wIndex + 1, 0, dup); renderCanvas(); pushHistory('Duplicate');
+            }
+            if(action === 'delete') {
+                AppState.widgets.splice(wIndex, 1); showWidgetLibrary(); renderCanvas(); pushHistory('Delete');
+            }
+        }
+
+        function savePage() {
+            if(!AppState.hasUnsavedChanges) return; // Prevent saving if no changes
+            const btn = document.getElementById('btn-save'); btn.innerText = 'SAVING...';
+            Pages.update(AppState.pageId, { widgets: AppState.widgets, settings: AppState.pageSettings });
+            setTimeout(() => { 
+                markChanges(false); 
+                btn.innerText = 'UPDATE'; // Reset text
+            }, 800);
+        }
+
+        function pushHistory(name) {
+            if (AppState.historyIndex < AppState.history.length - 1) AppState.history = AppState.history.slice(0, AppState.historyIndex + 1);
+            AppState.history.push({ name, state: JSON.stringify(AppState.widgets) });
+            if(AppState.history.length > AppState.maxHistory) AppState.history.shift();
+            AppState.historyIndex = AppState.history.length - 1;
+            markChanges(true); // Any history push implies a change
+        }
+
+        function undo() { if (AppState.historyIndex > 0) { AppState.historyIndex--; restoreHistory(); markChanges(true); } }
+        function redo() { if (AppState.historyIndex < AppState.history.length - 1) { AppState.historyIndex++; restoreHistory(); markChanges(true); } }
+        
+        function restoreHistory() {
+            const h = AppState.history[AppState.historyIndex];
+            AppState.widgets = JSON.parse(h.state);
+            renderCanvas(); showWidgetLibrary();
+        }
+
+        function setMode(mode, btn) {
+            document.getElementById('canvas').className = mode === 'desktop' ? '' : mode;
+            document.querySelectorAll('#top-bar .btn-tool').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+        }
+
+        function handleShortcuts(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+            if (e.ctrlKey && e.key === 's') { e.preventDefault(); savePage(); }
+            if (e.key === 'Delete') handleAction('delete');
+        }
+        
+        function previewPage() { alert('Preview: Check Console for full HTML structure.'); }
+
+    </script>
 </body>
 </html>
