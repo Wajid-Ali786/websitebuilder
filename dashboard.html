@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Builder Dashboard</title>
+    <!-- Link to the separate CSS file -->
+    <link rel="stylesheet" href="dashboard.css">
+    <!-- Font Awesome for Icons (Optional, strictly for UI icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <h2><i class="fa-solid fa-layer-group"></i> SiteBuilder</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" class="active"><i class="fa-solid fa-gauge-high"></i> Dashboard</a></li>
+                    <li><a href="#"><i class="fa-solid fa-file"></i> My Pages</a></li>
+                    <li><a href="#"><i class="fa-solid fa-table-columns"></i> Templates</a></li>
+                    <li><a href="#"><i class="fa-solid fa-plug"></i> Plugins</a></li>
+                    <li><a href="#"><i class="fa-solid fa-gear"></i> Settings</a></li>
+                </ul>
+            </nav>
+
+            <div class="account-section">
+                <div class="user-info">
+                    <div class="avatar">AD</div>
+                    <span class="username">Admin User</span>
+                </div>
+                <a href="#" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- Mobile Header (Visible only on small screens) -->
+            <div class="mobile-header">
+                <button id="sidebar-toggle"><i class="fa-solid fa-bars"></i></button>
+                <h3>Dashboard</h3>
+            </div>
+
+            <!-- Dashboard Header -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1>Overview</h1>
+                    <p>Welcome back, here's what's happening with your site.</p>
+                </div>
+                <div class="header-actions">
+                    <button id="create-new-btn" class="btn-primary">
+                        <i class="fa-solid fa-plus"></i> Create New Page
+                    </button>
+                </div>
+            </header>
+
+            <!-- Quick Stats Section -->
+            <section class="stats-grid" id="stats-container">
+                <!-- Stats will be injected here by JS -->
+            </section>
+
+            <!-- Recent Pages Section -->
+            <section class="recent-pages-section">
+                <div class="section-header">
+                    <h2>Recent Pages</h2>
+                    <a href="#" class="view-all">View All</a>
+                </div>
+                
+                <div class="pages-list" id="pages-container">
+                    <!-- Page items will be injected here by JS -->
+                    <div class="loading-state">Loading pages...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Link to the separate JS file -->
+    <script src="dashboard.js"></script>
+</body>
+</html>
