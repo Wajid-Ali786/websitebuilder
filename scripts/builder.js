@@ -10,6 +10,7 @@ import { Navigator } from './navigator.js';
 import { ContextMenu } from './contextmenu.js';
 import { ExportManager } from './export.js';
 import { Utils } from './utils.js';
+import { Responsive } from './responsive.js';
 
 // Global App State
 const App = {
@@ -17,6 +18,7 @@ const App = {
     data: { widgets: [], settings: {} },
     selected: null,
     history: new HistoryManager(),
+    clipboard: null, // For copy/paste
     
     init() {
         const params = new URLSearchParams(window.location.search);
@@ -33,29 +35,36 @@ const App = {
         if (this.pageId && window.Pages) {
             const page = window.Pages.getById(this.pageId);
             if (page) {
+                // Ensure data structures exist
                 this.data.widgets = page.widgets || [];
                 this.data.settings = page.settings || {};
-                document.getElementById('page-title').textContent = `Editing: ${page.title}`;
+                
+                const titleEl = document.getElementById('page-title');
+                if(titleEl) titleEl.textContent = `Editing: ${page.title}`;
             } else {
-                alert("Page not found");
+                console.error("Page not found in storage");
             }
         }
         
+        // Initial Render
         this.render();
-        this.history.push(this.data); // Initial State
+        this.history.push(this.data); // Save initial state
         this.bindEvents();
     },
 
     render() {
         const canvas = document.getElementById('canvas');
-        canvas.innerHTML = ''; // Clear
+        if (!canvas) return;
         
-        // Render Widgets recursively
+        canvas.innerHTML = ''; // Clear current view
+        
+        // Render Widgets recursively using the RenderEngine
         this.data.widgets.forEach(widget => {
             const el = RenderEngine.createWidgetElement(widget);
             canvas.appendChild(el);
         });
 
+        // Sync Navigator
         Navigator.render(this.data.widgets);
     },
 
@@ -70,7 +79,7 @@ const App = {
         // Open Inspector
         Inspector.open(id);
         
-        // Sync Navigator
+        // Sync Navigator Highlight
         Navigator.highlight(id);
     },
 
@@ -78,21 +87,16 @@ const App = {
         const widget = Utils.findWidget(id, this.data.widgets);
         if (!widget) return;
 
-        // Path update: 'content.text' or 'settings.style.color'
+        // Update Data Model
         Utils.setObjPath(widget, path, value);
         
-        // Re-render only modified widget if possible, or full render for layout changes
-        // For MVP, full render is safer but slower. 
-        // Optimized: Update DOM style directly for style changes
-        if (path.startsWith('settings.style')) {
+        // Optimized Render: Update styles directly if possible, else full re-render
+        if (path.startsWith('settings.style') || path.startsWith('settings.advanced')) {
             const el = document.getElementById(id);
             if (el) RenderEngine.applyStyles(el, widget);
         } else {
-            this.render(); // Content change usually requires re-render
+            this.render(); // Content changes usually affect layout, so re-render
         }
-        
-        // Debounce history save? For now, explicit actions save history.
-        // Input changes trigger history on 'change' event in Inspector.
     },
 
     addWidget(type, targetParentId = null, index = null) {
@@ -105,7 +109,7 @@ const App = {
                 else parent.children.push(newWidget);
             }
         } else {
-            // Root
+            // Add to Root
             if (index !== null) this.data.widgets.splice(index, 0, newWidget);
             else this.data.widgets.push(newWidget);
         }
@@ -144,40 +148,43 @@ const App = {
     save() {
         const btn = document.getElementById('btn-save');
         btn.textContent = "SAVING...";
-        if (window.Pages.update(this.pageId, { widgets: this.data.widgets })) {
-            setTimeout(() => btn.textContent = "UPDATE", 800);
+        
+        if (window.Pages && window.Pages.update(this.pageId, { widgets: this.data.widgets })) {
+            setTimeout(() => {
+                btn.textContent = "UPDATE";
+                btn.classList.remove('active'); // Remove 'unsaved changes' indicator if you have one
+            }, 800);
         } else {
             btn.textContent = "ERROR";
         }
     },
 
     bindEvents() {
-        // Top Bar
+        // Top Bar Actions
         document.getElementById('btn-save').onclick = () => this.save();
         document.getElementById('btn-undo').onclick = () => this.history.undo();
         document.getElementById('btn-redo').onclick = () => this.history.redo();
         document.getElementById('btn-back').onclick = () => window.location.href = 'dashboard.html';
+        
+        // Panels
         document.getElementById('btn-navigator').onclick = () => Navigator.toggle();
         document.getElementById('btn-export').onclick = () => ExportManager.download(this.data);
         document.getElementById('btn-preview').onclick = () => ExportManager.preview(this.data);
-
-        // Sidebar Toggles
         document.getElementById('btn-panel-grid').onclick = () => Inspector.close();
 
-        // Responsive Toggles
+        // Responsive Toggles (Using Responsive Module)
         document.querySelectorAll('[data-device]').forEach(btn => {
             btn.onclick = (e) => {
-                document.querySelectorAll('[data-device]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('canvas').className = `mode-${btn.dataset.device}`;
+                Responsive.setMode(btn.dataset.device);
             };
         });
 
-        // Click Canvas to deselect (FIXED: ID changed from 'canvas-wrapper' to 'stage')
+        // Background Click (Deselect)
+        // We use 'stage' as the main wrapper based on your HTML structure
         const stage = document.getElementById('stage');
         if (stage) {
             stage.addEventListener('click', (e) => {
-                // Deselect if clicking the background, not a widget
+                // Only deselect if clicking the gray area or the canvas frame, not a widget
                 if (e.target.id === 'stage' || e.target.id === 'canvas-frame' || e.target.id === 'canvas') {
                     this.selected = null;
                     Inspector.close();

@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SiteBuilder - Visual Editor</title>
-    
+
     <!-- External Libs -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
 
     <!-- Core Styles -->
     <link rel="stylesheet" href="styles/builder.css">
+    <link rel="stylesheet" href="styles/style.css">
 
     <!-- Global Storage (Legacy Support) -->
     <script>
         // Placeholder for existing pages.js functionality if loaded externally
-        if(!window.Pages) {
+        if (!window.Pages) {
             window.Pages = {
                 getAll: () => JSON.parse(localStorage.getItem('sitebuilder_pages') || '[]'),
                 getById: (id) => window.Pages.getAll().find(p => p.id === id),
@@ -33,29 +37,31 @@
         }
     </script>
 </head>
+
 <body>
 
     <!-- App Root -->
     <div id="app" class="builder-app">
-        
+
         <!-- Top Toolbar -->
         <header id="top-bar">
             <div class="bar-left">
-                <button class="btn-icon" id="btn-back" title="Back to Dashboard"><i class="fas fa-bars"></i></button>
+                <button class="btn-icon" id="btn-back" title="Back to Dashboard"><i class="fas fa-chevron-left"></i></button>
                 <div class="divider-v"></div>
                 <h4 id="page-title">Loading...</h4>
             </div>
-            
+
             <div class="bar-center">
-                <button class="btn-icon active" data-device="desktop"><i class="fas fa-desktop"></i></button>
-                <button class="btn-icon" data-device="tablet"><i class="fas fa-tablet-alt"></i></button>
-                <button class="btn-icon" data-device="mobile"><i class="fas fa-mobile-alt"></i></button>
+                <button class="btn-icon active" data-device="desktop" title="Default"><i class="fas fa-desktop"></i></button>
+                <button class="btn-icon" data-device="tablet" title="1024px"><i class="fas fa-tablet-alt"></i></button>
+                <button class="btn-icon" data-device="mobile" title="767px"><i class="fas fa-mobile-alt"></i></button>
             </div>
 
             <div class="bar-right">
                 <button class="btn-icon" id="btn-undo" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
                 <button class="btn-icon" id="btn-redo" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
-                <button class="btn-icon" id="btn-navigator" title="Navigator"><i class="fas fa-layer-group"></i></button>
+                <button class="btn-icon" id="btn-navigator" title="Navigator"><i
+                        class="fas fa-layer-group"></i></button>
                 <button class="btn-icon" id="btn-export" title="Export HTML"><i class="fas fa-file-export"></i></button>
                 <button class="btn-primary" id="btn-save">UPDATE</button>
                 <button class="btn-icon" id="btn-preview" title="Preview"><i class="fas fa-eye"></i></button>
@@ -64,14 +70,14 @@
 
         <!-- Main Workspace -->
         <div id="workspace">
-            
+
             <!-- Left Panel (Sidebar) -->
             <aside id="panel" class="panel-sidebar">
                 <div class="panel-header">
                     <span id="panel-header-title">Elements</span>
-                    <button class="btn-icon" id="btn-panel-grid"><i class="fas fa-th"></i></button>
+                    <button class="btn-icon" id="btn-panel-grid" title="Add Widget"><i class="fas fa-add"></i></button>
                 </div>
-                
+
                 <!-- Widget Library Mode -->
                 <div id="panel-widgets" class="panel-content">
                     <div class="widget-search">
@@ -106,13 +112,15 @@
             </main>
 
             <!-- Navigator Panel (Floating) -->
-            <div id="navigator" class="floating-panel" style="display:none;">
-                <div class="fp-header">
-                    <span>Navigator</span>
-                    <button class="btn-icon-small" id="close-navigator"><i class="fas fa-times"></i></button>
-                </div>
-                <div id="navigator-tree" class="fp-body">
-                    <!-- Tree injected here -->
+            <div id="navigator" class="floating-panel" style="top: 80px;">
+                <div class="navegater-mover">
+                    <div class="fp-header">
+                        <span>Navigator</span>
+                        <button class="btn-icon-small" id="close-navigator"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div id="navigator-tree" class="fp-body">
+                        <!-- Tree injected here -->
+                    </div>
                 </div>
             </div>
 
@@ -125,4 +133,5 @@
     <!-- JS Entry Point -->
     <script type="module" src="scripts/builder.js"></script>
 </body>
+
 </html>

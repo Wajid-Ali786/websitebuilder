@@ -1,0 +1,46 @@
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
+#stage {
+  padding: 5px;
+}
+#canvas-frame {
+  min-height: 100vh;
+  height: max-content;
+}
+#canvas {
+  padding: 0px;
+  overflow-x: auto;
+}
+.ce-container.empty {
+  background-image: unset;
+}
+.ce-container.empty::before {
+  content: "+";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+.ce-container.empty::after {
+    content: "";
+  background-image: url("../assets/660336-200.png");
+  /* Make the SVG be sized to the content box (so it sits at the inner edge) */
+  background-origin: content-box;
+  background-clip: content-box;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 100%;
+}
+.widget-category .widget-grid {
+  display: none;
+}
+.widget-category.open .widget-grid {
+  display: grid;
+}

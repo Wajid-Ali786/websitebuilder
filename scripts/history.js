@@ -1,5 +1,5 @@
 /**
- * History Manager
+ * History Manager (Redo | undo)
  */
 import { Utils } from './utils.js';
 
