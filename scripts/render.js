@@ -24,16 +24,40 @@ export const RenderEngine = {
         this.applyStyles(wrapper, widget);
 
         // Content
-        if (def.isContainer) {
+       if (def.isContainer) {
             wrapper.classList.add('ce-container');
-            if (!widget.children || widget.children.length === 0) wrapper.classList.add('empty');
-            
-            if (widget.children) {
+
+            // Remove any previous placeholder (safety for multiple renders)
+            wrapper.querySelector('.container-empty-content')?.remove();
+
+            const isEmpty = !widget.children || widget.children.length === 0;
+
+            if (isEmpty) {
+                wrapper.classList.add('empty');
+
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'container-empty-content';
+                emptyDiv.innerHTML = `
+                    <button class="add-btn"><i class="fas fa-plus"></i></button>
+                    <p class="drag_text">Drag widget here</p>
+                `;
+                
+                // Add event listener to the + button
+                const btn = emptyDiv.querySelector('.add-btn');
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    // Open Library, Select Parent
+                    window.App.selectWidget(widget.id); 
+                    import('./inspector.js').then(m => m.Inspector.close()); // Switches to Library view
+                };
+
+                wrapper.appendChild(emptyDiv);
+            } else {
                 widget.children.forEach(child => {
                     wrapper.appendChild(this.createWidgetElement(child));
                 });
             }
-        } else {
+        }  else {
             // Render inner HTML based on definition
             wrapper.innerHTML = def.renderHtml(widget);
             
@@ -53,19 +77,15 @@ export const RenderEngine = {
     applyStyles(el, widget) {
         const style = widget.settings.style || {};
         const adv = widget.settings.advanced || {};
-        const def = Registry.definitions[widget.type]; // Defined here to avoid reference error
+        const def = Registry.definitions[widget.type]; 
 
         // Reset styles first to avoid ghosts from previous renders
         el.style.cssText = ''; 
 
         // 1. Apply Standard Styles (Responsive Aware)
         Object.keys(style).forEach((key) => {
-            // Filter out internal responsive keys (e.g. fontSize_mobile)
-            // We only want to apply the resolved value to the base CSS property
             if (!key.includes('_mobile') && !key.includes('_tablet')) {
                 const val = Responsive.getStyleValue(style, key);
-                // Convert camelCase to kebab-case for CSS property check if needed, 
-                // but el.style[camelCase] usually works in JS.
                 if (val !== undefined && val !== '') {
                     el.style[key] = val;
                 }
@@ -73,7 +93,6 @@ export const RenderEngine = {
         });
 
         // 2. Apply Advanced Styles (Responsive Aware)
-        // Common advanced keys
         const advKeys = ['margin', 'padding', 'width', 'top', 'bottom', 'left', 'right', 'borderRadius'];
         advKeys.forEach(key => {
             const val = Responsive.getStyleValue(adv, key);
@@ -95,17 +114,11 @@ export const RenderEngine = {
     },
 
     setupInlineEdit(el, widget) {
-        const def = Registry.definitions[widget.type];
-        // Only allow inline edit if definition says so or it's a known text type
         if (widget.type === 'heading' || widget.type === 'text' || widget.type === 'button') {
             el.contentEditable = true;
-            
-            // Prevent drag when clicking text to edit
             el.onmousedown = (e) => e.stopPropagation();
-            
             el.oninput = () => {
                 widget.content.text = el.innerText;
-                // Note: In a full app, you might debounce saving history here
             };
             el.onblur = () => {
                 window.App.history.push(window.App.data);

@@ -170,7 +170,8 @@ const App = {
         document.getElementById('btn-navigator').onclick = () => Navigator.toggle();
         document.getElementById('btn-export').onclick = () => ExportManager.download(this.data);
         document.getElementById('btn-preview').onclick = () => ExportManager.preview(this.data);
-        document.getElementById('btn-panel-grid').onclick = () => Inspector.close();
+        document.querySelectorAll('.btn-panel-grid').forEach(el => {el.onclick = () => Inspector.close();});
+        
 
         // Responsive Toggles (Using Responsive Module)
         document.querySelectorAll('[data-device]').forEach(btn => {

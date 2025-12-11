@@ -8,12 +8,13 @@ import { Utils } from './utils.js';
 export const Navigator = {
     // Stores which nodes are expanded (set of IDs)
     expandedNodes: new Set(),
+    draggedId: null,
 
     init() {
         const closeBtn = document.getElementById('close-navigator');
         if (closeBtn) closeBtn.onclick = () => this.toggle();
         
-        // Draggable panel logic
+        // Draggable panel logic (Move the window)
         const panel = document.getElementById('navigator');
         if (panel) this.makeDraggable(panel);
     },
@@ -58,16 +59,26 @@ export const Navigator = {
         // 1. Branch Wrapper
         const branch = document.createElement('div');
         branch.className = `nav-branch ${isExpanded ? 'expanded' : ''}`;
-        branch.dataset.id = widget.id; // Helper for context menu
+        branch.dataset.id = widget.id; 
 
         // 2. Header Row
         const header = document.createElement('div');
         header.className = `nav-header ${isSelected ? 'active' : ''}`;
+        header.draggable = true; // Enable Dragging for Item
         
+        // Drag Events
+        this.bindDragEvents(header, widget);
+
         // Arrow (Toggle)
         const arrow = document.createElement('div');
-        arrow.className = `nav-arrow ${hasChildren ? '' : 'empty'}`;
-        arrow.innerHTML = '<i class="fas fa-caret-right"></i>';
+        arrow.className = `nav-arrow ${hasChildren || def.isContainer ? '' : 'empty'}`; // Show arrow for empty containers too if needed, or check hasChildren
+        // Logic fix: Only show arrow if it HAS children or IS a container (so you can drop into it and expand later)
+        // Elementor shows arrow for sections even if empty? Usually only if populated. 
+        // Keeping strictly for hasChildren for visual cleaniness, but adding drop logic below.
+        if (def.isContainer && !hasChildren) arrow.classList.add('empty'); // Placeholder space
+        if (!def.isContainer) arrow.classList.add('empty');
+
+        arrow.innerHTML = hasChildren ? '<i class="fas fa-caret-right"></i>' : '';
         arrow.onclick = (e) => {
             e.stopPropagation();
             if (hasChildren) {
@@ -82,7 +93,7 @@ export const Navigator = {
 
         const label = document.createElement('div');
         label.className = 'nav-label';
-        label.innerText = def.label; // Could use widget content text/name if available
+        label.innerText = def.label; 
 
         // Visibility Toggle
         const eye = document.createElement('div');
@@ -102,17 +113,14 @@ export const Navigator = {
 
         // Click to Select
         header.onclick = (e) => {
-            // Support multi-select logic later if needed
             window.App.selectWidget(widget.id);
         };
         
-        // Right Click (Context Menu)
+        // Right Click
         header.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Select it visually first
             window.App.selectWidget(widget.id);
-            // Trigger Context Menu (imported dynamically to avoid cycle if needed, or via global)
             import('./contextmenu.js').then(mod => mod.ContextMenu.show(e, 'navigator', widget.id));
         };
 
@@ -134,6 +142,132 @@ export const Navigator = {
         return branch;
     },
 
+    // --- Drag & Drop Logic for Tree ---
+    bindDragEvents(el, widget) {
+        el.addEventListener('dragstart', (e) => {
+            e.stopPropagation();
+            this.draggedId = widget.id;
+            el.classList.add('nav-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', widget.id); // Required for FF
+        });
+
+        el.addEventListener('dragend', (e) => {
+            el.classList.remove('nav-dragging');
+            this.draggedId = null;
+            document.querySelectorAll('.nav-drag-over-top, .nav-drag-over-bottom, .nav-drag-over-inside').forEach(node => {
+                node.classList.remove('nav-drag-over-top', 'nav-drag-over-bottom', 'nav-drag-over-inside');
+            });
+        });
+
+        el.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (this.draggedId === widget.id) return; // Can't drop on self
+
+            e.stopPropagation();
+            
+            // Calculate Drop Position
+            const rect = el.getBoundingClientRect();
+            const relY = e.clientY - rect.top;
+            const height = rect.height;
+            
+            // Reset classes
+            el.classList.remove('nav-drag-over-top', 'nav-drag-over-bottom', 'nav-drag-over-inside');
+
+            const def = Registry.definitions[widget.type];
+            
+            // Logic: Top 25% = Before, Bottom 25% = After, Middle 50% = Inside (if container)
+            // If not container, Split 50/50 Top/Bottom
+            
+            if (def.isContainer) {
+                if (relY < height * 0.25) el.classList.add('nav-drag-over-top');
+                else if (relY > height * 0.75) el.classList.add('nav-drag-over-bottom');
+                else el.classList.add('nav-drag-over-inside');
+            } else {
+                if (relY < height * 0.5) el.classList.add('nav-drag-over-top');
+                else el.classList.add('nav-drag-over-bottom');
+            }
+        });
+
+        el.addEventListener('dragleave', (e) => {
+            el.classList.remove('nav-drag-over-top', 'nav-drag-over-bottom', 'nav-drag-over-inside');
+        });
+
+        el.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (this.draggedId === widget.id) return;
+
+            // Determine Action
+            let position = 'after';
+            if (el.classList.contains('nav-drag-over-top')) position = 'before';
+            if (el.classList.contains('nav-drag-over-inside')) position = 'inside';
+
+            this.moveWidget(this.draggedId, widget.id, position);
+            
+            // Cleanup
+            el.classList.remove('nav-drag-over-top', 'nav-drag-over-bottom', 'nav-drag-over-inside');
+        });
+    },
+
+    moveWidget(movedId, targetId, position) {
+        const App = window.App;
+        
+        // 1. Find Moved Widget & Remove from old location
+        const movedCtx = Utils.findParentArray(movedId, App.data.widgets);
+        if (!movedCtx) return;
+        
+        const movedWidget = movedCtx.array.find(w => w.id === movedId);
+        
+        // Prevent moving parent into child
+        if (this.isDescendant(movedWidget, targetId)) {
+            alert("Cannot move a parent into its own child.");
+            return;
+        }
+
+        // Remove from old
+        const oldIdx = movedCtx.array.indexOf(movedWidget);
+        movedCtx.array.splice(oldIdx, 1);
+
+        // 2. Find Target & Insert
+        if (position === 'inside') {
+            const targetWidget = Utils.findWidget(targetId, App.data.widgets);
+            if (targetWidget && targetWidget.children) {
+                targetWidget.children.push(movedWidget);
+                // Auto expand target
+                this.expandedNodes.add(targetId);
+            } else {
+                // Fallback if not container (shouldn't happen due to UI logic)
+                movedCtx.array.splice(oldIdx, 0, movedWidget); 
+            }
+        } else {
+            // Before or After
+            // We need to find the array containing the target
+            // If targetId is root, we might not find "parent widget", but findParentArray handles root list too
+            const targetCtx = Utils.findParentArray(targetId, App.data.widgets);
+            if (targetCtx) {
+                let targetIdx = targetCtx.array.findIndex(w => w.id === targetId);
+                if (position === 'after') targetIdx++;
+                targetCtx.array.splice(targetIdx, 0, movedWidget);
+            }
+        }
+
+        // 3. Update UI
+        App.render(); // Refreshes Canvas
+        this.render(App.data.widgets); // Refreshes Tree
+        App.history.push(App.data);
+    },
+
+    isDescendant(parent, childId) {
+        if (!parent.children) return false;
+        for (let child of parent.children) {
+            if (child.id === childId) return true;
+            if (this.isDescendant(child, childId)) return true;
+        }
+        return false;
+    },
+
     toggleExpand(id, branchEl) {
         if (this.expandedNodes.has(id)) {
             this.expandedNodes.delete(id);
@@ -149,7 +283,7 @@ export const Navigator = {
         if (el) {
             const current = el.style.display;
             if (current === 'none') {
-                el.style.display = ''; // Restore
+                el.style.display = ''; 
                 iconEl.classList.remove('hidden');
                 iconEl.innerHTML = '<i class="fas fa-eye"></i>';
             } else {
@@ -161,24 +295,35 @@ export const Navigator = {
     },
 
     highlight(id) {
-        // If navigator is open, re-render to show active state
         const el = document.getElementById('navigator');
         if (el && el.style.display !== 'none') {
             this.render(window.App.data.widgets);
-            
-            // Auto-expand parents to show selected item
-            // (Optional enhancement: traverse parents and add to expandedNodes)
         }
     },
 
     makeDraggable(elmnt) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        // Use user's specific class structure
         const header = elmnt.querySelector('.navegater-mover');
         if (header) {
             header.onmousedown = dragMouseDown;
+        } else {
+            // Fallback to header if mover class missing
+            if(elmnt.querySelector('.fp-header')) elmnt.querySelector('.fp-header').onmousedown = dragMouseDown;
         }
 
         function dragMouseDown(e) {
+            // Don't drag panel if clicking buttons/icons inside header
+            if (
+             e.target.closest('.nav-header') ||   
+              e.target.closest('.nav-icon') ||  
+             e.target.closest('.nav-label') ||  
+             e.target.closest('.nav-arrow') ||  
+             e.target.closest('.nav-eye')        
+            ) return;
+            
+            if(e.target.closest('button') || e.target.closest('.navigator-collapse')) return;
+            
             e.preventDefault();
             pos3 = e.clientX;
             pos4 = e.clientY;

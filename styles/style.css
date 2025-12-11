@@ -1,4 +1,4 @@
-h1,
+/* h1,
 h2,
 h3,
 h4,
@@ -8,39 +8,80 @@ p {
   margin: 0;
 }
 #stage {
-  padding: 5px;
+  padding: 2px;
 }
 #canvas-frame {
   min-height: 100vh;
   height: max-content;
+  position: relative;
 }
 #canvas {
   padding: 0px;
   overflow-x: auto;
+  padding-bottom: 150px;
+  position: relative;
+}
+.add-new-section {
+  position: absolute;
+  z-index: 20;
+  bottom: 80px;
+  left: 50%;
+  translate: -50% 50%;
+  background: #ffffff00;
+  border: 2px dashed #d5d8dc;
+  width: 50%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.canvas_add-widget {
+  cursor: pointer;
+  border: unset;
+  border-radius: 50%;
+  box-shadow: unset;
+  outline: unset;
+  background-color: #e6e8ea;
+  color: #000;
+  font-size: 16px;
+  padding: 7px 8px;
+  text-shadow: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.canvas_add-widget i {
+  transition: all 0.3s;
+}
+.canvas_add-widget:hover i {
+  rotate: 90deg;
 }
 .ce-container.empty {
   background-image: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+
 }
-.ce-container.empty::before {
-  content: "+";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  translate: -50% -50%;
+.ce-container.empty .container-empty-content {
+  display: flex;
+  flex-direction: column;
 }
-.ce-container.empty::after {
-    content: "";
-  background-image: url("../assets/660336-200.png");
-  /* Make the SVG be sized to the content box (so it sits at the inner edge) */
-  background-origin: content-box;
-  background-clip: content-box;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  background-size: 100% 100%;
+.ce-container.empty .container-empty-content .add-btn {
+  border: none;
+  outline: none;
+  background: #0000;
 }
+.ce-container.empty .container-empty-content .drag_text {
+  margin-top: 8px;
+  font-size: 10px;
+  font-style: italic;
+}
+
 .widget-category .widget-grid {
   display: none;
 }
 .widget-category.open .widget-grid {
   display: grid;
-}
+} */
