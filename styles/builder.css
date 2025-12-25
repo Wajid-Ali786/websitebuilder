@@ -352,6 +352,7 @@ body {
   flex-direction: column;
   overflow-x: auto;
   position: relative;
+  border: 1px solid #d9d4d4;
 }
 #canvas.mode-tablet {
   width: 768px;
