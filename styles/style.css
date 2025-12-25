@@ -1,4 +1,4 @@
-/* h1,
+ h1,
 h2,
 h3,
 h4,
@@ -7,51 +7,7 @@ h6,
 p {
   margin: 0;
 }
-
-.canvas_add-widget {
-  cursor: pointer;
-  border: unset;
-  border-radius: 50%;
-  box-shadow: unset;
-  outline: unset;
-  background-color: #e6e8ea;
-  color: #000;
-  font-size: 16px;
-  padding: 7px 8px;
-  text-shadow: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.canvas_add-widget i {
-  transition: all 0.3s;
-}
-.canvas_add-widget:hover i {
-  rotate: 90deg;
-}
-.ce-container.empty {
-  background-image: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100px;
-
-}
-.ce-container.empty .container-empty-content {
-  display: flex;
-  flex-direction: column;
-}
-.ce-container.empty .container-empty-content .add-btn {
-  border: none;
-  outline: none;
-  background: #0000;
-}
-.ce-container.empty .container-empty-content .drag_text {
-  margin-top: 8px;
-  font-size: 10px;
-  font-style: italic;
-}
-
+/* 
 .widget-category .widget-grid {
   display: none;
 }
