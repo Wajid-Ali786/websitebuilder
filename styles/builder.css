@@ -326,7 +326,7 @@ body {
   background: var(--canvas-bg);
   display: flex;
   justify-content: center;
-  padding: 40px;
+  padding: 2px;
   overflow-y: auto;
 }
 #canvas-frame {
@@ -334,7 +334,9 @@ body {
   display: flex;
   flex-direction: column; /* Changed to column to stack canvas and add-button */
   align-items: center;
-  min-height: 100%;
+  min-height: 100vh;
+  height: max-content;
+  position: relative;
 }
 #canvas {
   background: #fff;
@@ -344,8 +346,10 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   padding: 2px;
   transition: width 0.3s ease;
-  display: flex; /* Changed from flow-root to flex for layout */
+  display: flex;
   flex-direction: column;
+  overflow-x: auto;
+  position: relative;
 }
 #canvas.mode-tablet {
   width: 768px;
@@ -353,6 +357,19 @@ body {
 #canvas.mode-mobile {
   width: 360px;
 }
+#stage .add-new-section {
+  width: 100%;
+  max-width: 1140px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 2px dashed #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
 
 /* Widget Visuals */
 .ce-widget {
@@ -395,6 +412,7 @@ body {
   pointer-events: none; /* Let drag events pass through unless on button */
 }
 
+
 .container-empty-content .add-btn {
   pointer-events: auto;
   width: 40px;
@@ -422,19 +440,6 @@ body {
   font-weight: 600;
 }
 
-/* Add New Section Button (Bottom of Canvas) */
-.add-new-section {
-  width: 100%;
-  max-width: 1140px;
-  margin-top: 20px;
-  padding: 20px;
-  border: 2px dashed #ccc;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-}
 .canvas_add-widget {
   width: 50px;
   height: 50px;
